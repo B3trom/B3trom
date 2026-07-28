@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Deutsch-Italienisch-Übersetzer mit Offline-Reisemodus, Sprache und OCR.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ItaliaTranslate">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
+    <title>ItaliaTranslate v18 – Native App vorbereitet</title>
+  <style>
+    :root{
+      --bg:#f4f9f6;--panel:#fff;--text:#20312b;--muted:#718078;
+      --green:#21b970;--green-dark:#15975a;--green-soft:#eaf9f1;
+      --blue:#5179fa;--blue-soft:#edf2ff;--line:#dce8e2;
+      --danger:#d65454;--warning:#d99125;--shadow:0 18px 52px rgba(30,72,53,.10);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#f8fbf9,#eff6f2);color:var(--text)}
+    body{padding:14px}
+    button,input,textarea,select{font:inherit}
+    button{cursor:pointer}
+    .app{width:min(100%,1050px);margin:auto}
+    .topbar,.statusbar,.actions,.headrow,.setting,.list-item,.ocr-head{display:flex;align-items:center}
+    .topbar,.statusbar,.headrow,.setting,.ocr-head{justify-content:space-between}
+    .topbar{gap:12px;margin-bottom:15px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:50px;height:50px;border-radius:17px;background:var(--green);display:grid;place-items:center;color:white;font-weight:900;box-shadow:0 10px 26px rgba(33,185,112,.28)}
+    h1,h2,h3,p{margin-top:0}.brand h1{font-size:1.28rem;margin:0}.brand p{font-size:.88rem;color:var(--muted);margin:3px 0 0}
+    .icon,.btn,.tab,.nav,.chip{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:14px;padding:9px 12px}
+    .statusbar{gap:10px;flex-wrap:wrap;margin-bottom:13px}
+    .status{display:flex;gap:8px;align-items:center;border:1px solid var(--line);background:#ffffffdd;padding:8px 12px;border-radius:999px;color:var(--muted);font-size:.86rem}
+    .dot{width:9px;height:9px;border-radius:50%;background:var(--green)}
+    .tabs,.navs,.actions{display:flex;gap:8px;flex-wrap:wrap}
+    .tab,.nav{color:var(--muted)}.tab.active,.nav.active{background:var(--green-soft);border-color:#bdebd3;color:var(--green-dark);font-weight:800}
+    .navs{margin-bottom:13px}
+    .view{display:none}.view.active{display:block}
+    .card,.mini{background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow)}
+    .card{border-radius:25px;overflow:hidden}.mini{border-radius:20px;padding:16px}
+    .language{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:17px;border-bottom:1px solid var(--line)}
+    .language select{width:100%;border:0;background:transparent;font-weight:800;outline:none;color:var(--text)}
+    .swap{width:46px;height:46px;border:0;border-radius:50%;background:var(--green);color:#fff;font-size:1.3rem}
+    .grid2{display:grid;grid-template-columns:1fr 1fr}
+    .pane{padding:18px;min-height:260px}.pane+.pane{border-left:1px solid var(--line)}
+    .headrow{gap:10px;margin-bottom:12px}.title{font-weight:800}.meta{color:var(--muted);font-size:.84rem}
+    textarea{width:100%;min-height:150px;resize:vertical;border:0;outline:none;background:transparent;color:var(--text);font-size:1.06rem;line-height:1.55}
+    .output{min-height:150px;font-size:1.06rem;line-height:1.55;white-space:pre-wrap}.placeholder{color:#9ba8a2}
+    .actions{margin-top:13px}.btn{padding:10px 13px}.green{background:var(--green-soft);border-color:#ccefdc;color:var(--green-dark)}.blue{background:var(--blue-soft);border-color:#dae2ff;color:#365de0}
+    .translatebar{padding:17px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .primary{flex:1;min-width:220px;border:0;background:var(--green);color:white;border-radius:16px;padding:15px 20px;font-weight:900;font-size:1.04rem;box-shadow:0 12px 26px rgba(33,185,112,.26)}
+    .primary:disabled{opacity:.55}
+    .section-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:15px}
+    .list{display:grid;gap:8px}.list-item{justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:14px;padding:10px 11px}.list-item small{display:block;color:var(--muted);margin-top:3px}
+    .drawer{display:none;margin-top:15px}.drawer.open{display:block}
+    .setting{gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}.setting:last-child{border-bottom:0}
+    .setting input[type=text],.setting input[type=password],.setting select{width:min(100%,420px);border:1px solid var(--line);border-radius:12px;padding:9px}
+    .toggle{appearance:none;width:48px;height:28px;border-radius:999px;background:#ccd8d1;position:relative}.toggle:checked{background:var(--green)}.toggle::after{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}.toggle:checked::after{transform:translateX(20px)}
+    .ocr-panel{display:none;margin-top:12px;padding:14px;border:1px dashed #bdd0c6;border-radius:16px;background:#fbfdfc}.ocr-panel.open{display:block}
+    .ocr-stage{display:none;margin-top:12px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#17201b;min-height:180px;place-items:center}.ocr-stage.show{display:grid}
+    .ocr-canvas{display:block;max-width:100%;max-height:360px;touch-action:none}
+    .ocr-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.ocr-tool{border:1px solid var(--line);border-radius:13px;padding:9px;background:var(--panel)}
+    .ocr-tool label{display:flex;justify-content:space-between;gap:8px;font-size:.82rem;color:var(--muted);margin-bottom:5px}.ocr-tool input[type=range]{width:100%}
+    .ocr-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ocr-options label{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--panel);font-size:.86rem}
+    progress{width:100%;height:12px;margin-top:10px}.ocr-text{width:100%;min-height:100px;border:1px solid var(--line);border-radius:13px;padding:10px;margin-top:10px;background:var(--panel);color:var(--text)}
+    .ocr-result-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .ocr-modebar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.ocr-modebar label{font-size:.82rem;color:var(--muted)}.ocr-modebar select{width:100%;margin-top:5px}.ocr-analysis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.ocr-metric{padding:9px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.ocr-metric strong{display:block;font-size:.86rem}.ocr-metric span{font-size:.78rem;color:var(--muted)}.ocr-advice{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--green-soft);font-size:.86rem}.ocr-advice.warn{background:#fff5e7;color:#825719}.menu-preview{margin-top:10px;border:1px solid var(--line);border-radius:13px;overflow:hidden}.menu-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 11px;border-bottom:1px solid var(--line)}.menu-row:last-child{border-bottom:0}.menu-row small{grid-column:1/-1;color:var(--muted)}
+    .category-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.category{border:1px solid var(--line);background:#fff;border-radius:17px;padding:15px;text-align:left}.category.active{background:var(--green-soft);border-color:#bdebd3}.category span{font-size:1.35rem;display:block;margin-bottom:6px}
+    .phrases{display:grid;gap:9px;margin-top:13px}.phrase{border:1px solid var(--line);border-radius:15px;padding:12px}.phrase small{display:block;color:var(--muted);margin-top:4px}
+    .conversation{display:grid;grid-template-columns:1fr 1fr;gap:14px}.speaker{border:1px solid var(--line);border-radius:18px;padding:15px}.speaker textarea{min-height:115px}.micbig{width:100%;border:0;background:var(--green);color:white;border-radius:14px;padding:13px;font-weight:800}
+    .notice{margin-top:15px;background:var(--blue-soft);border:1px solid #d9e1ff;color:#36529f;border-radius:16px;padding:12px 14px;font-size:.9rem}
+    .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(18px);opacity:0;background:#18362a;color:white;padding:11px 15px;border-radius:999px;transition:.2s;pointer-events:none;z-index:50}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+        .danger{color:var(--danger);border-color:#f0caca;background:#fff7f7}
+    body.dark{--bg:#101713;--panel:#17221c;--text:#eef7f1;--muted:#9eaea5;--green-soft:#173d2b;--blue-soft:#172747;--line:#314139;--shadow:0 18px 52px rgba(0,0,0,.25);background:linear-gradient(180deg,#101713,#121c17)}
+    body.dark .icon,body.dark .btn,body.dark .tab,body.dark .nav,body.dark .category,body.dark .phrase,body.dark .list-item,body.dark .speaker{background:var(--panel)}
+    .hidden{display:none!important}
+
+    .quickbar{display:flex;gap:8px;overflow-x:auto;padding:0 2px 11px;scrollbar-width:none}.quickbar::-webkit-scrollbar{display:none}.quick-chip{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 13px;color:var(--text)}.quick-chip:hover{background:var(--green-soft);border-color:#bdebd3}
+    .list-tools{display:flex;gap:8px;align-items:center;margin:10px 0}.search{flex:1;min-width:0;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:13px;padding:10px 12px;outline:none}.search:focus{border-color:var(--green)}
+    .item-actions{display:flex;gap:5px;flex-shrink:0}.tiny{padding:7px 9px;border-radius:11px}.counter{font-size:.8rem;color:var(--muted);white-space:nowrap}.kbd{font-size:.72rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:2px 5px;color:var(--muted)}
+    .mobile-nav{display:none}.scrolltop{position:fixed;right:18px;bottom:20px;width:45px;height:45px;border:0;border-radius:50%;background:var(--green);color:#fff;box-shadow:0 10px 25px rgba(33,185,112,.3);opacity:0;pointer-events:none;transition:.2s;z-index:40}.scrolltop.show{opacity:1;pointer-events:auto}
+    @media(max-width:760px){body{padding:9px}.brand p{display:none}.grid2,.section-grid,.conversation{grid-template-columns:1fr}.pane+.pane{border-left:0;border-top:1px solid var(--line)}.category-grid{grid-template-columns:repeat(2,1fr)}.setting{align-items:flex-start;flex-direction:column}.setting input[type=text],.setting input[type=password],.setting select{width:100%}.navs{display:none}.mobile-nav{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:8px;right:8px;bottom:8px;z-index:45;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:18px;padding:6px;box-shadow:var(--shadow)}.mobile-nav .nav{border:0;background:transparent;padding:10px 5px;font-size:.82rem}.mobile-nav .nav.active{background:var(--green-soft)}body{padding-bottom:82px}.scrolltop{bottom:86px;right:14px}}
+  
+    .detect-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px}
+    .detect-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:var(--green-soft);font-size:.84rem;font-weight:750}
+    .detect-badge.unsure{background:#fff7e7}.detect-badge.it{background:#eef3ff}.detect-badge.de{background:var(--green-soft)}
+    .test-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}
+    .test-stat{padding:12px;border:1px solid var(--line);border-radius:14px;text-align:center;background:var(--panel)}
+    .test-stat strong{display:block;font-size:1.35rem}.test-stat span{font-size:.78rem;color:var(--muted)}
+    .test-results{display:grid;gap:8px;max-height:430px;overflow:auto}
+    .test-row{padding:11px;border:1px solid var(--line);border-radius:13px;background:var(--panel)}
+    .test-row.pass{border-left:5px solid var(--green)}.test-row.partial{border-left:5px solid var(--warning)}.test-row.fail{border-left:5px solid var(--danger)}
+    .test-row .route{font-size:.76rem;color:var(--muted);font-weight:800}.test-row .actual{margin-top:5px;font-weight:700}.test-row .expected{margin-top:3px;font-size:.82rem;color:var(--muted)}
+    @media(max-width:620px){.test-summary{grid-template-columns:repeat(2,1fr)}}
+
+  </style>
+</head>
+<body>
+<main class="app">
+  <header class="topbar">
+    <div class="brand"><div class="logo">IT</div><div><h1>ItaliaTranslate</h1><p>Deutsch und Italienisch – online und offline</p></div></div>
+    <div class="actions"><button class="icon" id="installAppBtn" hidden title="ItaliaTranslate installieren">Installieren</button><button class="icon" id="shareAppBtn" title="Übersetzung teilen">Teilen</button><button class="icon" id="settingsBtn" aria-label="Einstellungen öffnen">⚙️</button></div>
+  </header>
+
+  <div class="statusbar">
+    <div class="status"><span class="dot" id="dot"></span><span id="connection">Verbindung wird geprüft …</span></div>
+    <div class="tabs">
+      <button class="tab active" data-mode="auto">Automatisch</button>
+      <button class="tab" data-mode="offline">Offline</button>
+      <button class="tab" data-mode="online">Online</button>
+    </div>
+  </div>
+
+  <nav class="navs">
+    <button class="nav active" data-view="translator">Übersetzer</button>
+    <button class="nav" data-view="travel">Reisemodus</button>
+    <button class="nav" data-view="conversation">Konversation</button>
+  </nav>
+
+  <section class="view active" id="translatorView">
+    <div class="quickbar" aria-label="Schnelleingaben">
+      <button class="quick-chip" data-quick="Wo ist die Toilette?">🚻 Toilette</button>
+      <button class="quick-chip" data-quick="Die Rechnung, bitte.">🧾 Rechnung</button>
+      <button class="quick-chip" data-quick="Kann ich mit Karte bezahlen?">💳 Karte</button>
+      <button class="quick-chip" data-quick="Ich brauche Hilfe.">🆘 Hilfe</button>
+      <button class="quick-chip" data-quick="Wo ist die nächste Tankstelle?">⛽ Tankstelle</button>
+      <button class="quick-chip" data-quick="Ich verstehe nicht.">💬 Nicht verstanden</button>
+    </div>
+    <section class="card">
+      <div class="language">
+        <select id="sourceLang"><option value="auto">✨ Automatisch erkennen</option><option value="it">🇮🇹 Italienisch</option><option value="de">🇩🇪 Deutsch</option></select>
+        <button class="swap" id="swapBtn">⇄</button>
+        <select id="targetLang"><option value="de">🇩🇪 Deutsch</option><option value="it">🇮🇹 Italienisch</option></select>
+      </div>
+
+      <div class="grid2">
+        <section class="pane">
+          <div class="headrow"><span class="title" id="inputTitle">Italienisch</span><span class="meta" id="count">0 / 4000</span></div>
+          <textarea id="sourceText" maxlength="4000" placeholder="Text eingeben …"></textarea>
+          <div class="detect-row"><span class="detect-badge unsure" id="detectBadge">✨ Sprache wird automatisch erkannt</span><button class="btn tiny" id="detectNowBtn" type="button">Jetzt erkennen</button></div>
+          <div class="actions">
+            <button class="btn green" id="micBtn">🎙 Sprechen</button>
+            <button class="btn blue" id="photoBtn">📷 Foto / OCR</button>
+            <button class="btn" id="clearBtn">✕ Löschen</button>
+          </div>
+
+          <div class="ocr-panel" id="ocrPanel">
+            <div class="ocr-head"><div><strong>Texterkennung</strong><div class="meta">Bildverarbeitung erfolgt im Browser.</div></div><span class="meta" id="ocrStatus">Bereit</span></div>
+            <input type="file" id="photoInput" accept="image/*" capture="environment">
+            <div class="ocr-modebar"><label>Dokumenttyp<select id="ocrDocumentType"><option value="auto">Automatisch erkennen</option><option value="menu">Speisekarte</option><option value="sign">Schild / kurzer Text</option><option value="receipt">Kassenzettel / Rechnung</option><option value="product">Produktetikett</option><option value="document">Dokument</option></select></label><label>Nachbearbeitung<select id="ocrCorrectionMode"><option value="smart">Intelligent</option><option value="light">Nur vorsichtig</option><option value="off">Aus</option></select></label></div>
+            <div class="ocr-stage" id="ocrStage"><canvas class="ocr-canvas" id="ocrCanvas"></canvas></div>
+            <div class="ocr-tools" id="ocrTools">
+              <div class="ocr-tool"><label><span>Links abschneiden</span><strong id="cropLeftValue">0 %</strong></label><input type="range" id="cropLeft" min="0" max="45" value="0"></div>
+              <div class="ocr-tool"><label><span>Rechts abschneiden</span><strong id="cropRightValue">0 %</strong></label><input type="range" id="cropRight" min="0" max="45" value="0"></div>
+              <div class="ocr-tool"><label><span>Oben abschneiden</span><strong id="cropTopValue">0 %</strong></label><input type="range" id="cropTop" min="0" max="45" value="0"></div>
+              <div class="ocr-tool"><label><span>Unten abschneiden</span><strong id="cropBottomValue">0 %</strong></label><input type="range" id="cropBottom" min="0" max="45" value="0"></div>
+              <div class="ocr-tool"><label><span>Kontrast</span><strong id="contrastValue">130 %</strong></label><input type="range" id="ocrContrast" min="70" max="220" value="130"></div>
+              <div class="ocr-tool"><label><span>Helligkeit</span><strong id="brightnessValue">105 %</strong></label><input type="range" id="ocrBrightness" min="60" max="180" value="105"></div>
+              <div class="ocr-tool"><label><span>Feinausrichtung</span><strong id="deskewValue">0,0°</strong></label><input type="range" id="ocrDeskew" min="-10" max="10" step="0.1" value="0"></div>
+              <div class="ocr-tool"><label><span>Perspektive</span><strong id="perspectiveValue">0 %</strong></label><input type="range" id="ocrPerspective" min="-25" max="25" value="0"></div>
+            </div>
+            <div class="ocr-options">
+              <button class="btn" id="rotateLeftBtn" type="button">↶ 90°</button><button class="btn" id="rotateRightBtn" type="button">↷ 90°</button><button class="btn blue" id="autoAlignBtn" type="button">⌁ Automatisch begradigen</button>
+              <label><input type="checkbox" id="ocrGray" checked> Graustufen</label><label><input type="checkbox" id="ocrInvert"> Invertieren</label><label><input type="checkbox" id="ocrSharpen" checked> Schärfen</label>
+              <button class="btn" id="resetImageBtn" type="button">Bild zurücksetzen</button>
+            </div>
+            <progress id="ocrProgress" max="100" value="0"></progress>
+            <div class="ocr-result-meta"><span class="meta" id="ocrConfidence">Erkennungsqualität: –</span><span class="meta" id="ocrLanguage">Sprache: automatisch</span></div>
+            <div class="ocr-analysis" id="ocrAnalysis"><div class="ocr-metric"><strong id="ocrType">Dokumenttyp: –</strong><span id="ocrWordCount">0 Wörter</span></div><div class="ocr-metric"><strong id="ocrImageQuality">Bildqualität: –</strong><span id="ocrIssueCount">Keine Analyse</span></div></div><div class="ocr-advice" id="ocrAdvice">Nach der Erkennung erscheint hier eine Aufnahmeempfehlung.</div>
+            <textarea class="ocr-text" id="ocrText" placeholder="Erkannter Text erscheint hier …"></textarea><div class="menu-preview" id="menuPreview" hidden></div>
+            <div class="actions"><button class="btn green" id="runOcrBtn">Text erkennen</button><button class="btn blue" id="useAndTranslateBtn">Übernehmen und übersetzen</button><button class="btn" id="useOcrBtn">Nur übernehmen</button></div>
+          </div>
+        </section>
+
+        <section class="pane">
+          <div class="headrow"><span class="title" id="outputTitle">Deutsch</span><span class="meta" id="engineLabel">Offline</span></div>
+          <div class="output placeholder" id="outputText">Die Übersetzung erscheint hier.</div>
+          <div class="actions">
+            <button class="btn green" id="speakBtn">🔊 Vorlesen</button>
+            <button class="btn" id="copyBtn">▣ Kopieren</button>
+            <button class="btn" id="shareBtn">↗ Teilen</button>
+            <button class="btn" id="favoriteBtn">☆ Favorit</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="translatebar">
+        <button class="primary" id="translateBtn">Übersetzen&nbsp;&nbsp;⇄</button>
+        <span class="meta" id="engineInfo">Grammatik-Engine und Offline-Bibliothek aktiv</span>
+      </div>
+    </section>
+
+    <section class="section-grid">
+      <article class="mini"><div class="headrow"><h2 style="margin:0">Verlauf</h2><span class="counter" id="historyCount">0 Einträge</span></div><div class="list-tools"><input class="search" id="historySearch" type="search" placeholder="Verlauf durchsuchen …"><button class="btn tiny" id="clearHistoryQuick" title="Verlauf leeren">✕</button></div><div class="list" id="historyList"></div></article>
+      <article class="mini"><div class="headrow"><h2 style="margin:0">Favoriten</h2><span class="counter" id="favoritesCount">0 Einträge</span></div><div class="list-tools"><input class="search" id="favoritesSearch" type="search" placeholder="Favoriten durchsuchen …"></div><div class="list" id="favoritesList"></div></article>
+    </section>
+  </section>
+
+  <section class="view" id="travelView">
+    <div class="mini">
+      <h2>Reisemodus</h2><p class="meta">Wichtige Sätze bleiben vollständig offline verfügbar.</p>
+      <div class="category-grid" id="categoryGrid"></div>
+      <div class="phrases" id="phraseGrid"></div>
+    </div>
+  </section>
+
+  <section class="view" id="conversationView">
+    <div class="mini">
+      <h2>Konversationsmodus</h2><p class="meta">Abwechselnd sprechen oder schreiben.</p>
+      <div class="conversation">
+        <section class="speaker"><h3>🇩🇪 Deutsch</h3><textarea id="convDe" placeholder="Deutsch …"></textarea><button class="micbig" data-conv="de">🎙 Deutsch sprechen</button></section>
+        <section class="speaker"><h3>🇮🇹 Italiano</h3><textarea id="convIt" placeholder="Italiano …"></textarea><button class="micbig" data-conv="it">🎙 Parlare italiano</button></section>
+      </div>
+      <div class="actions"><button class="btn green" id="deToIt">Deutsch → Italienisch</button><button class="btn blue" id="itToDe">Italienisch → Deutsch</button><button class="btn" id="convClear">Löschen</button></div>
+    </div>
+  </section>
+
+  <section class="drawer mini" id="settings">
+    <h2>Einstellungen</h2>
+    <div class="setting"><div><strong>Online-Anbieter</strong><div class="meta">Bestimmt Anfrage- und Antwortformat</div></div><select id="provider"><option value="libre">LibreTranslate</option><option value="mymemory">MyMemory (ohne Schlüssel)</option><option value="custom">Benutzerdefinierte JSON-API</option></select></div>
+    <div class="setting"><div><strong>Online-Endpunkt</strong><div class="meta" id="endpointHint">LibreTranslate: vollständige /translate-Adresse</div></div><input type="text" id="endpoint" placeholder="https://…/translate"></div>
+    <div class="setting"><div><strong>API-Schlüssel</strong><div class="meta">Optional; lokal und unverschlüsselt im Browser gespeichert</div></div><input type="password" id="apiKey" placeholder="Optional"></div>
+    <div class="setting"><div><strong>Zeitlimit</strong><div class="meta">Abbruch langsamer Online-Anfragen</div></div><select id="requestTimeout"><option value="8">8 Sekunden</option><option value="15">15 Sekunden</option><option value="25">25 Sekunden</option><option value="40">40 Sekunden</option></select></div>
+    <div class="mini" style="margin:10px 0"><div class="headrow"><div><strong>Verbindungsstatus</strong><div class="meta" id="onlineStatus">Noch nicht getestet.</div></div><button class="btn" id="testOnlineBtn">Verbindung testen</button></div></div>
+    <div class="setting"><div><strong>Online bei mobilen Daten</strong><div class="meta">Kann zusätzlichen Datenverbrauch verursachen</div></div><input class="toggle" type="checkbox" id="mobileData"></div>
+    <div class="setting"><div><strong>Offline bevorzugen</strong><div class="meta">Im Automatikmodus zuerst lokal suchen</div></div><input class="toggle" type="checkbox" id="offlineFirst"></div>
+    <div class="mini" style="margin:14px 0">
+      <div class="headrow"><div><strong>Lokale KI / Offline-Modell</strong><div class="meta">Geräteprüfung, Modellverwaltung und sichere Adapter-Schnittstelle</div></div><span class="badge" id="localAiBadge">Nicht geprüft</span></div>
+      <div class="setting"><div><strong>Lokale KI verwenden</strong><div class="meta">Wird vor der Online-API versucht, sofern ein Modell verfügbar ist</div></div><input class="toggle" type="checkbox" id="localAiEnabled"></div>
+      <div class="setting"><div><strong>Modellquelle</strong><div class="meta">Echte Transformers.js-KI, Browser-KI oder externer Adapter</div></div><select id="localModelProfile"><option value="auto">Automatisch</option><option value="transformers">Transformers.js · Marian</option><option value="browser">Browser-eigene Übersetzungs-KI</option><option value="adapter">Externer lokaler Adapter</option></select></div>
+      <div class="setting"><div><strong>Ausführung</strong><div class="meta">WASM ist kompatibler; WebGPU kann schneller sein</div></div><select id="localAiDevice"><option value="wasm">CPU / WASM</option><option value="webgpu">GPU / WebGPU</option></select></div>
+      <div class="setting"><div><strong>Quantisierung</strong><div class="meta">Q8 ist stabil; Q4 spart mehr Speicher</div></div><select id="localAiDtype"><option value="q8">Q8 · empfohlen</option><option value="q4">Q4 · kleiner</option></select></div>
+      <div class="setting"><div><strong>Modellmanifest</strong><div class="meta">Nur für eigene externe Modellpakete erforderlich</div></div><input type="url" id="modelManifestUrl" placeholder="Optional: https://…/model-manifest.json"></div>
+      <div class="mini" style="margin:8px 0"><div class="meta" id="deviceReport">Gerät und Speicher wurden noch nicht geprüft.</div><div class="meta" id="modelReport">Kein lokales Modell registriert.</div><div class="meta" id="modelAdvice">Vor dem ersten Download wird eine Eignungsprüfung empfohlen.</div><progress id="modelProgress" max="100" value="0" style="width:100%;margin-top:8px" hidden></progress></div>
+      <div class="actions"><button class="btn" id="checkDeviceBtn">Gerät prüfen</button><button class="btn" id="persistStorageBtn">Speicher dauerhaft reservieren</button><button class="btn green" id="downloadModelBtn">KI-Modell laden</button><button class="btn blue" id="testLocalAiBtn">KI testen</button><button class="btn" id="cancelModelBtn" disabled>Abbrechen</button><button class="btn danger" id="removeModelBtn">Modelldaten löschen</button></div>
+      <div class="mini" style="margin-top:10px"><div class="headrow"><div><strong>KI-Praxistest</strong><div class="meta">Misst Ladezeit, Übersetzungszeit und Ergebnisqualität für beide Richtungen.</div></div><button class="btn green" id="runAiBenchmarkBtn">Benchmark starten</button></div><div class="test-summary" id="aiBenchmarkSummary"><div class="test-stat"><strong>–</strong><span>Noch nicht geprüft</span></div></div><div class="test-results" id="aiBenchmarkResults"></div></div><div class="meta">Hinweis: Der erste Start lädt pro Übersetzungsrichtung zwei quantisierte Modelle. Danach nutzt Transformers.js den Browsercache. Deutsch ⇄ Italienisch läuft über Englisch und kann mehrere hundert MB Speicher benötigen.</div>
+    </div>
+    <div class="mini" style="margin:14px 0">
+      <div class="headrow"><div><strong>Native App & Diagnose</strong><div class="meta">Einheitliche Schnittstelle für Web, PWA, Android und iOS</div></div><span class="badge" id="platformBadge">Web</span></div>
+      <div class="meta" id="nativeReport">Plattform wird geprüft …</div>
+      <div class="actions"><button class="btn" id="runNativeDiagnosticsBtn">Diagnose starten</button><button class="btn" id="exportDiagnosticsBtn">Diagnose exportieren</button><button class="btn" id="clearDiagnosticsBtn">Protokoll löschen</button></div>
+      <div class="test-summary" id="nativeStats"><div class="test-stat"><strong>0</strong><span>Fehler</span></div><div class="test-stat"><strong>0</strong><span>Messungen</span></div><div class="test-stat"><strong>Web</strong><span>Laufzeit</span></div></div>
+      <div class="meta" style="margin-top:8px">Native Adapter: Kamera, Teilen, Dateisystem, Gerätestatus und Modell-Downloads nutzen dieselbe API. Im Browser greifen sichere Web-Fallbacks.</div>
+    </div>
+    <div class="setting"><div><strong>Verlauf speichern</strong><div class="meta">Nur lokal im Browser</div></div><input class="toggle" type="checkbox" id="saveHistory"></div>
+    <div class="setting"><div><strong>Automatisch vorlesen</strong></div><input class="toggle" type="checkbox" id="autoSpeak"></div>
+    <div class="setting"><div><strong>Dunkle Darstellung</strong><div class="meta">Wird lokal gespeichert</div></div><input class="toggle" type="checkbox" id="darkMode"></div>
+    <div class="mini" style="margin-top:14px"><div class="headrow"><div><strong>Übersetzungs-Testsystem</strong><div class="meta">Prüft den Offline-Kern mit typischen Reise- und Alltagssätzen.</div></div><button class="btn green" id="runTestsBtn">Tests starten</button></div><div class="test-summary" id="testSummary"><div class="test-stat"><strong>–</strong><span>Noch nicht geprüft</span></div></div><div class="test-results" id="testResults"></div></div>
+    <div class="actions"><button class="btn" id="exportBtn">Daten exportieren</button><label class="btn" for="importInput">Daten importieren</label><input class="hidden" type="file" id="importInput" accept="application/json"><button class="btn" id="clearHistoryBtn">Verlauf leeren</button><button class="btn danger" id="resetBtn">Alle lokalen Daten löschen</button></div>
+  </section>
+
+  <div class="notice">
+    Version 18 ergänzt eine gemeinsame Web-/Native-Plattformschicht, Diagnose- und Fehlerprotokolle, Performance-Messung sowie eine Capacitor-kompatible Projektstruktur. Version 17 ergänzte Installation, Manifest und Offline-App-Shell. Version 16 ergänzt Produktionsprüfung, dauerhaften Cache, Downloadwarnungen und einen lokalen KI-Benchmark. Version 15 integrierte eine echte browserfähige Übersetzungs-KI mit Transformers.js und quantisierten Marian-Modellen. Version 14 ergänzte eine lokale KI-Modellarchitektur mit Geräteprüfung, Speicherverwaltung, Modellmanifesten, Downloadabbruch und einer standardisierten Adapter-Schnittstelle. Version 12 ergänzt intelligente Dokumenttyp-Erkennung, OCR-Nachkorrektur, Qualitätsbewertung und einen Speisekartenmodus. Version 10 ergänzt automatische Spracherkennung mit Vertrauenswert sowie ein integriertes Offline-Übersetzungs-Testsystem. Version 10 ergänzte Schnellzugriffe, durchsuchbaren Verlauf und Favoriten, optimierte Smartphone-Navigation und Tastaturkürzel. Die OCR-Bildbearbeitung mit Zuschnitt, Drehung, Kontrast, Graustufen, Invertierung und Schärfung. Die regelbasierte Grammatik bleibt vollständig enthalten: Artikel, häufige Verbformen, Verneinungen, Fragen und Präpositionen werden offline natürlicher zusammengesetzt. Die Offline-Logik bleibt eine kompakte Reisehilfe und ersetzt kein großes Sprachmodell.
+  </div>
+</main>
+<nav class="mobile-nav" aria-label="Mobile Navigation"><button class="nav active" data-view="translator">↔<br>Übersetzer</button><button class="nav" data-view="travel">🧳<br>Reise</button><button class="nav" data-view="conversation">💬<br>Gespräch</button></nav>
+<button class="scrolltop" id="scrollTopBtn" aria-label="Nach oben">↑</button>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const KEY="italiaTranslateV10";
+const LEGACY_KEYS=["italiaTranslateV9","italiaTranslateV8","italiaTranslateV7","italiaTranslateV6","italiaTranslateV5","italiaTranslateV4","italiaTranslateV3","italiaTranslateV2"];
+const state={version:18,mode:"auto",history:[],favorites:[],last:"",category:"restaurant",activeView:"translator",draft:{source:"",output:"",sourceLang:"auto",targetLang:"de"},settings:{provider:"libre",endpoint:"",apiKey:"",requestTimeout:15,mobileData:true,offlineFirst:true,saveHistory:true,autoSpeak:false,darkMode:false,localAiEnabled:true,localModelProfile:"auto",localAiDevice:"wasm",localAiDtype:"q8",modelManifestUrl:""}};
+let selectedImage=null, selectedImageBitmap=null, ocrLoader=null, saveTimer=null, modelDownloadController=null, transformersModulePromise=null, neuralRunToken=0, neuralBusy=false;
+const neuralPipelines=new Map();
+const ocrState={rotation:0,deskew:0,perspective:0,cropLeft:0,cropRight:0,cropTop:0,cropBottom:0,contrast:130,brightness:105,gray:true,invert:false,sharpen:true};
+
+const travel={
+restaurant:[["Ich hätte gerne …","Vorrei …"],["Die Rechnung, bitte.","Il conto, per favore."],["Ohne Käse.","Senza formaggio."],["Ist das vegetarisch?","È vegetariano?"],["Ich bin allergisch gegen …","Sono allergico a …"],["Kann ich mit Karte bezahlen?","Posso pagare con la carta?"],["Einen Tisch für zwei Personen, bitte.", "Un tavolo per due persone, per favore."],["Ich hätte gerne die Speisekarte.", "Vorrei il menu."],["Ist dieses Gericht scharf?", "Questo piatto è piccante?"],["Ohne Zwiebeln, bitte.", "Senza cipolle, per favore."]],
+shopping:[["Wo ist der Supermarkt?","Dov'è il supermercato?"],["Wie viel kostet das?","Quanto costa?"],["Ich suche Butter.","Cerco il burro."],["Ich suche Vollmilch.","Cerco il latte intero."],["Haben Sie Pfeffer?","Avete del pepe?"],["Ich brauche einen Beutel.","Ho bisogno di un sacchetto."],["Kann ich das anprobieren?", "Posso provarlo?"],["Haben Sie eine kleinere Größe?", "Avete una taglia più piccola?"],["Wo ist die Kasse?", "Dov’è la cassa?"],["Ich brauche den Kassenbon.", "Ho bisogno dello scontrino."]],
+hotel:[["Ich habe eine Reservierung.","Ho una prenotazione."],["Das WLAN funktioniert nicht.","Il Wi-Fi non funziona."],["Die Toilette funktioniert nicht.","Il WC non funziona."],["Ich brauche ein Handtuch.","Ho bisogno di un asciugamano."],["Wann ist das Frühstück?","A che ora è la colazione?"],["Die Klimaanlage funktioniert nicht.", "L’aria condizionata non funziona."],["Können Sie das Zimmer reinigen?", "Può pulire la camera?"],["Bis wann muss ich auschecken?", "Entro che ora devo fare il check-out?"]],
+emergency:[["Ich brauche Hilfe.","Ho bisogno di aiuto."],["Rufen Sie einen Krankenwagen.","Chiami un'ambulanza."],["Wo ist das Krankenhaus?","Dov'è l'ospedale?"],["Ich habe Schmerzen.","Ho dolore."],["Bitte rufen Sie die Polizei.","Chiami la polizia, per favore."],["Ich brauche einen Arzt.", "Ho bisogno di un medico."],["Ich habe Fieber.", "Ho la febbre."],["Ich bin allergisch gegen dieses Medikament.", "Sono allergico a questo farmaco."]],
+traffic:[["Wo ist die Tankstelle?","Dov'è il distributore?"],["Bleifreies Benzin, bitte.","Benzina senza piombo, per favore."],["Wo kann ich parken?","Dove posso parcheggiare?"],["Ich habe eine Panne.","Ho un guasto."],["Wie komme ich zum Bahnhof?","Come arrivo alla stazione?"],["Wann fährt der Zug ab?", "Quando parte il treno?"],["Von welchem Gleis?", "Da quale binario?"],["Hat der Zug Verspätung?", "Il treno è in ritardo?"],["Wo ist die nächste Werkstatt?", "Dov’è l’officina più vicina?"]],
+basics:[["Hallo","Ciao"],["Guten Morgen","Buongiorno"],["Guten Abend","Buonasera"],["Danke","Grazie"],["Bitte","Per favore"],["Entschuldigung","Scusi"],["Ich verstehe nicht.","Non capisco."],["Können Sie das wiederholen?","Può ripetere?"],["Ich spreche nur wenig Italienisch.", "Parlo poco italiano."],["Können Sie langsamer sprechen?", "Può parlare più lentamente?"],["Was bedeutet das?", "Cosa significa?"]]
+};
+const cats={restaurant:["🍕","Restaurant"],shopping:["🛒","Einkaufen"],hotel:["🏨","Hotel"],emergency:["🚑","Notfall"],traffic:["🚗","Verkehr"],basics:["💬","Grundlagen"]};
+const vocabularyPairs=[["ja","sì"],["nein","no"],["vielleicht","forse"],["natürlich","naturalmente"],["gern","volentieri"],["sehr","molto"],["auch","anche"],["nur","solo"],["noch","ancora"],["schon","già"],["jetzt","adesso"],["später","più tardi"],["sofort","subito"],["heute","oggi"],["morgen","domani"],["gestern","ieri"],["morgens","la mattina"],["abends","la sera"],["montag","lunedì"],["dienstag","martedì"],["mittwoch","mercoledì"],["donnerstag","giovedì"],["freitag","venerdì"],["samstag","sabato"],["sonntag","domenica"],["eins","uno"],["zwei","due"],["drei","tre"],["vier","quattro"],["fünf","cinque"],["sechs","sei"],["sieben","sette"],["acht","otto"],["neun","nove"],["zehn","dieci"],["hundert","cento"],["tausend","mille"],["ich","io"],["du","tu"],["er","lui"],["sie","lei"],["wir","noi"],["ihr","voi"],["mein","mio"],["meine","mia"],["dein","tuo"],["Ihre","suo"],["dieser","questo"],["diese","questa"],["das","questo"],["wer","chi"],["was","cosa"],["wo","dove"],["wann","quando"],["warum","perché"],["wie","come"],["welcher","quale"],["welche","quale"],["wie viel","quanto"],["wie viele","quanti"],["und","e"],["oder","o"],["aber","ma"],["mit","con"],["ohne","senza"],["für","per"],["von","da"],["nach","a"],["in","in"],["auf","su"],["unter","sotto"],["neben","accanto a"],["vor","davanti a"],["hinter","dietro"],["zwischen","tra"],["gut","buono"],["schlecht","cattivo"],["groß","grande"],["klein","piccolo"],["heiß","caldo"],["kalt","freddo"],["warm","tiepido"],["neu","nuovo"],["alt","vecchio"],["teuer","costoso"],["billig","economico"],["frei","libero"],["besetzt","occupato"],["offen","aperto"],["geschlossen","chiuso"],["richtig","giusto"],["falsch","sbagliato"],["schnell","veloce"],["langsam","lento"],["nah","vicino"],["weit","lontano"],["sein","essere"],["haben","avere"],["machen","fare"],["gehen","andare"],["kommen","venire"],["fahren","andare"],["sprechen","parlare"],["verstehen","capire"],["wissen","sapere"],["sehen","vedere"],["hören","sentire"],["essen","mangiare"],["trinken","bere"],["kaufen","comprare"],["bezahlen","pagare"],["suchen","cercare"],["finden","trovare"],["brauchen","avere bisogno di"],["wollen","volere"],["möchten","volere"],["können","potere"],["müssen","dovere"],["helfen","aiutare"],["warten","aspettare"],["öffnen","aprire"],["schließen","chiudere"],["reservieren","prenotare"],["bestellen","ordinare"],["nehmen","prendere"],["geben","dare"],["bringen","portare"],["hallo","ciao"],["guten morgen","buongiorno"],["guten abend","buonasera"],["gute nacht","buonanotte"],["tschüss","arrivederci"],["danke","grazie"],["vielen dank","grazie mille"],["bitte","per favore"],["entschuldigung","scusi"],["kein problem","nessun problema"],["mann","uomo"],["frau","donna"],["kind","bambino"],["familie","famiglia"],["freund","amico"],["name","nome"],["adresse","indirizzo"],["telefonnummer","numero di telefono"],["haus","casa"],["wohnung","appartamento"],["zimmer","camera"],["bad","bagno"],["toilette","bagno"],["küche","cucina"],["tür","porta"],["fenster","finestra"],["schlüssel","chiave"],["bett","letto"],["handtuch","asciugamano"],["seife","sapone"],["papier","carta"],["hotel","hotel"],["rezeption","reception"],["reservierung","prenotazione"],["frühstück","colazione"],["wlan","Wi-Fi"],["passwort","password"],["klimaanlage","aria condizionata"],["aufzug","ascensore"],["treppe","scala"],["etage","piano"],["balkon","balcone"],["restaurant","ristorante"],["bar","bar"],["café","caffè"],["tisch","tavolo"],["karte","menu"],["speisekarte","menu"],["rechnung","conto"],["trinkgeld","mancia"],["gericht","piatto"],["portion","porzione"],["frühstück","colazione"],["mittagessen","pranzo"],["abendessen","cena"],["wasser","acqua"],["mineralwasser","acqua minerale"],["kaffee","caffè"],["tee","tè"],["milch","latte"],["vollmilch","latte intero"],["bier","birra"],["wein","vino"],["saft","succo"],["brot","pane"],["butter","burro"],["käse","formaggio"],["ei","uovo"],["eier","uova"],["fleisch","carne"],["fisch","pesce"],["huhn","pollo"],["schwein","maiale"],["rind","manzo"],["gemüse","verdura"],["obst","frutta"],["salat","insalata"],["tomate","pomodoro"],["kartoffel","patata"],["reis","riso"],["nudeln","pasta"],["pizza","pizza"],["suppe","zuppa"],["zucker","zucchero"],["salz","sale"],["pfeffer","pepe"],["öl","olio"],["essig","aceto"],["cornflakes","cornflakes"],["vegetarisch","vegetariano"],["vegan","vegano"],["glutenfrei","senza glutine"],["laktosefrei","senza lattosio"],["allergie","allergia"],["allergisch","allergico"],["scharf","piccante"],["süß","dolce"],["salzig","salato"],["roh","crudo"],["durchgebraten","ben cotto"],["supermarkt","supermercato"],["geschäft","negozio"],["markt","mercato"],["apotheke","farmacia"],["bäckerei","panetteria"],["metzgerei","macelleria"],["kasse","cassa"],["preis","prezzo"],["rabatt","sconto"],["angebot","offerta"],["beutel","sacchetto"],["tüte","sacchetto"],["flasche","bottiglia"],["packung","confezione"],["kilo","chilo"],["gramm","grammo"],["stück","pezzo"],["karte","carta"],["bargeld","contanti"],["kassenbon","scontrino"],["straße","strada"],["weg","percorso"],["platz","piazza"],["stadt","città"],["dorf","paese"],["zentrum","centro"],["rechts","a destra"],["links","a sinistra"],["geradeaus","dritto"],["hier","qui"],["dort","lì"],["eingang","entrata"],["ausgang","uscita"],["bahnhof","stazione"],["haltestelle","fermata"],["flughafen","aeroporto"],["hafen","porto"],["bus","autobus"],["zug","treno"],["taxi","taxi"],["fahrkarte","biglietto"],["gleis","binario"],["abfahrt","partenza"],["ankunft","arrivo"],["verspätung","ritardo"],["auto","auto"],["parkplatz","parcheggio"],["tankstelle","distributore"],["benzin","benzina"],["diesel","diesel"],["bleifrei","senza piombo"],["reifen","pneumatico"],["motor","motore"],["panne","guasto"],["werkstatt","officina"],["maut","pedaggio"],["autobahn","autostrada"],["ausfahrt","uscita"],["gesperrt","chiuso"],["unfall","incidente"],["arzt","medico"],["krankenhaus","ospedale"],["notaufnahme","pronto soccorso"],["polizei","polizia"],["feuerwehr","vigili del fuoco"],["krankenwagen","ambulanza"],["hilfe","aiuto"],["notfall","emergenza"],["schmerzen","dolore"],["kopf","testa"],["bauch","pancia"],["rücken","schiena"],["arm","braccio"],["bein","gamba"],["hand","mano"],["fuß","piede"],["fieber","febbre"],["krank","malato"],["verletzt","ferito"],["medizin","medicina"],["tablette","compressa"],["rezept","ricetta"],["sonne","sole"],["regen","pioggia"],["wind","vento"],["wetter","tempo"],["meer","mare"],["strand","spiaggia"],["berg","montagna"],["see","lago"],["urlaub","vacanza"],["reise","viaggio"],["foto","foto"],["kamera","fotocamera"],["müll","rifiuti"],["restmüll","rifiuti indifferenziati"],["papiermüll","carta"],["plastik","plastica"],["glas","vetro"],["biomüll","rifiuti organici"],["mülltonne","cassonetto"],["hund","cane"],["hundekot","escrementi del cane"]];
+const phrasePairs=[["Wie geht es Ihnen?","Come sta?"],["Mir geht es gut.","Sto bene."],["Ich verstehe nicht.","Non capisco."],["Ich spreche nur wenig Italienisch.","Parlo poco italiano."],["Können Sie langsamer sprechen?","Può parlare più lentamente?"],["Können Sie das wiederholen?","Può ripetere?"],["Was bedeutet das?","Cosa significa?"],["Wo ist die nächste Toilette?","Dov’è il bagno più vicino?"],["Wo ist der nächste Supermarkt?","Dov’è il supermercato più vicino?"],["Wo ist die nächste Apotheke?","Dov’è la farmacia più vicina?"],["Wie komme ich dorthin?","Come ci arrivo?"],["Ist es weit?","È lontano?"],["Gehen Sie geradeaus.","Vada dritto."],["Biegen Sie rechts ab.","Giri a destra."],["Biegen Sie links ab.","Giri a sinistra."],["Ich möchte ein Zimmer reservieren.","Vorrei prenotare una camera."],["Ich habe eine Reservierung.","Ho una prenotazione."],["Auf welchen Namen?","A che nome?"],["Wann ist das Frühstück?","A che ora è la colazione?"],["Das WLAN funktioniert nicht.","Il Wi-Fi non funziona."],["Die Klimaanlage funktioniert nicht.","L’aria condizionata non funziona."],["Die Toilettenspülung funktioniert nicht.","Lo scarico del WC non funziona."],["Einen Tisch für zwei Personen, bitte.","Un tavolo per due persone, per favore."],["Ich hätte gerne die Speisekarte.","Vorrei il menu."],["Ich hätte gerne die Rechnung.","Vorrei il conto."],["Kann ich mit Karte bezahlen?","Posso pagare con la carta?"],["Ich zahle bar.","Pago in contanti."],["Das schmeckt sehr gut.","È molto buono."],["Ich bin Vegetarier.","Sono vegetariano."],["Ich bin allergisch gegen Nüsse.","Sono allergico alla frutta secca."],["Wie viel kostet das?","Quanto costa?"],["Haben Sie eine kleinere Größe?","Avete una taglia più piccola?"],["Haben Sie das auch in einer anderen Farbe?","Lo avete anche in un altro colore?"],["Ich möchte das kaufen.","Vorrei comprarlo."],["Ich brauche eine Tüte.","Ho bisogno di un sacchetto."],["Ich brauche den Kassenbon.","Ho bisogno dello scontrino."],["Eine Fahrkarte nach Rom, bitte.","Un biglietto per Roma, per favore."],["Wann fährt der Zug ab?","Quando parte il treno?"],["Von welchem Gleis?","Da quale binario?"],["Hat der Zug Verspätung?","Il treno è in ritardo?"],["Wo kann ich parken?","Dove posso parcheggiare?"],["Ich brauche bleifreies Benzin.","Ho bisogno di benzina senza piombo."],["Ich habe eine Panne.","Ho un guasto."],["Ich brauche einen Arzt.","Ho bisogno di un medico."],["Rufen Sie einen Krankenwagen.","Chiami un’ambulanza."],["Bitte rufen Sie die Polizei.","Chiami la polizia, per favore."],["Wo ist das Krankenhaus?","Dov’è l’ospedale?"],["Ich habe starke Schmerzen.","Ho forti dolori."],["Ich bin allergisch gegen dieses Medikament.","Sono allergico a questo farmaco."],["Wo kann ich den Müll entsorgen?","Dove posso buttare i rifiuti?"],["In welche Mülltonne gehört das?","In quale cassonetto va questo?"],["Wo darf der Hund laufen?","Dove può correre il cane?"]];
+const dict={"de-it":{},"it-de":{}};
+const wordDict={"de-it":{},"it-de":{}};
+function addPair(de,it,word=false){
+  dict["de-it"][n(de)]=it;dict["it-de"][n(it)]=de;
+  if(word){wordDict["de-it"][n(de)]=it;wordDict["it-de"][n(it)]=de}
+}
+Object.values(travel).flat().forEach(([de,it])=>addPair(de,it));
+vocabularyPairs.forEach(([de,it])=>addPair(de,it,true));
+phrasePairs.forEach(([de,it])=>addPair(de,it));
+
+function n(s){return String(s??"").trim().toLowerCase().replace(/[.!]+$/ ,"").replace(/\s+/g," ")}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function toast(m){$("toast").textContent=m;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),2200)}
+function save(){
+  state.version=7;
+  state.draft={source:$("sourceText")?.value||"",output:state.last||"",sourceLang:$("sourceLang")?.value||"it",targetLang:$("targetLang")?.value||"de"};
+  try{localStorage.setItem(KEY,JSON.stringify(state))}catch{toast("Lokaler Speicher ist voll oder blockiert.")}
+}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(save,250)}
+function validEntry(x){return x&&typeof x==="object"&&typeof x.source==="string"&&typeof x.translation==="string"}
+function cleanEntry(x){return{source:x.source.slice(0,4000),translation:x.translation.slice(0,12000),sourceLang:x.sourceLang==="de"?"de":"it",targetLang:x.targetLang==="it"?"it":"de"}}
+function mergeState(data){
+  if(!data||typeof data!=="object")return;
+  if(Array.isArray(data.history))state.history=data.history.filter(validEntry).slice(0,30).map(cleanEntry);
+  if(Array.isArray(data.favorites))state.favorites=data.favorites.filter(validEntry).slice(0,40).map(cleanEntry);
+  if(["auto","offline","online"].includes(data.mode))state.mode=data.mode;
+  if(Object.hasOwn(travel,data.category))state.category=data.category;
+  if(["translator","travel","conversation"].includes(data.activeView))state.activeView=data.activeView;
+  if(data.draft&&typeof data.draft==="object"){
+    if(typeof data.draft.source==="string")state.draft.source=data.draft.source.slice(0,4000);
+    if(typeof data.draft.output==="string")state.draft.output=data.draft.output.slice(0,12000);
+    if(["auto","de","it"].includes(data.draft.sourceLang))state.draft.sourceLang=data.draft.sourceLang;
+    if(["de","it"].includes(data.draft.targetLang))state.draft.targetLang=data.draft.targetLang;
+  }
+  if(data.settings&&typeof data.settings==="object"){
+    if(typeof data.settings.endpoint==="string")state.settings.endpoint=data.settings.endpoint.slice(0,1000);
+    if(typeof data.settings.apiKey==="string")state.settings.apiKey=data.settings.apiKey.slice(0,1000);
+    ["mobileData","offlineFirst","saveHistory","autoSpeak","darkMode","localAiEnabled"].forEach(k=>{if(typeof data.settings[k]==="boolean")state.settings[k]=data.settings[k]});
+    if(["auto","transformers","browser","adapter"].includes(data.settings.localModelProfile))state.settings.localModelProfile=data.settings.localModelProfile;
+    if(["wasm","webgpu"].includes(data.settings.localAiDevice))state.settings.localAiDevice=data.settings.localAiDevice;
+    if(["q8","q4"].includes(data.settings.localAiDtype))state.settings.localAiDtype=data.settings.localAiDtype;
+    if(typeof data.settings.modelManifestUrl==="string")state.settings.modelManifestUrl=data.settings.modelManifestUrl.slice(0,2000);
+    if(["libre","mymemory","custom"].includes(data.settings.provider))state.settings.provider=data.settings.provider;
+    if(Number.isFinite(Number(data.settings.requestTimeout)))state.settings.requestTimeout=Math.min(40,Math.max(5,Number(data.settings.requestTimeout)));
+  }
+  if(typeof data.last==="string")state.last=data.last.slice(0,12000);
+}
+function load(){
+  let data=null;
+  try{data=JSON.parse(localStorage.getItem(KEY)||"null")}catch{}
+  if(!data){for(const oldKey of LEGACY_KEYS){try{data=JSON.parse(localStorage.getItem(oldKey)||"null");if(data)break}catch{}}}
+  mergeState(data);
+  ["endpoint","apiKey"].forEach(x=>$(x).value=state.settings[x]||"");
+  ["mobileData","offlineFirst","saveHistory","autoSpeak","darkMode","localAiEnabled"].forEach(x=>$(x).checked=!!state.settings[x]);
+  $("localModelProfile").value=state.settings.localModelProfile||"auto";$("localAiDevice").value=state.settings.localAiDevice||"wasm";$("localAiDtype").value=state.settings.localAiDtype||"q8";$("modelManifestUrl").value=state.settings.modelManifestUrl||"";
+  $("provider").value=state.settings.provider||"libre";$("requestTimeout").value=String(state.settings.requestTimeout||15);updateProviderUi();
+  document.body.classList.toggle("dark",!!state.settings.darkMode);
+  $("sourceLang").value=state.draft.sourceLang||"auto";$("targetLang").value=state.draft.targetLang||"de";
+  $("sourceText").value=state.draft.source||"";
+  if(state.draft.output){setOutput(state.draft.output,"Wiederhergestellt")}
+}
+function preserveCase(source,target){
+  if(!target)return target;
+  return /^[A-ZÄÖÜ]/.test(source)?target.charAt(0).toUpperCase()+target.slice(1):target;
+}
+
+const nounInfo={
+  "bagno":{g:"m",de:"Badezimmer"},"supermercato":{g:"m",de:"Supermarkt"},"ristorante":{g:"m",de:"Restaurant"},
+  "conto":{g:"m",de:"Rechnung"},"menu":{g:"m",de:"Speisekarte"},"tavolo":{g:"m",de:"Tisch"},"formaggio":{g:"m",de:"Käse"},
+  "burro":{g:"m",de:"Butter"},"latte":{g:"m",de:"Milch"},"pepe":{g:"m",de:"Pfeffer"},"pane":{g:"m",de:"Brot"},
+  "treno":{g:"m",de:"Zug"},"binario":{g:"m",de:"Gleis"},"parcheggio":{g:"m",de:"Parkplatz"},"distributore":{g:"m",de:"Tankstelle"},
+  "medico":{g:"m",de:"Arzt"},"ospedale":{g:"m",de:"Krankenhaus"},"farmaco":{g:"m",de:"Medikament"},"sacchetto":{g:"m",de:"Beutel"},
+  "camera":{g:"f",de:"Zimmer"},"cassa":{g:"f",de:"Kasse"},"farmacia":{g:"f",de:"Apotheke"},"stazione":{g:"f",de:"Bahnhof"},
+  "strada":{g:"f",de:"Straße"},"officina":{g:"f",de:"Werkstatt"},"polizia":{g:"f",de:"Polizei"},"ambulanza":{g:"f",de:"Krankenwagen"},
+  "bottiglia":{g:"f",de:"Flasche"},"prenotazione":{g:"f",de:"Reservierung"},"chiave":{g:"f",de:"Schlüssel"},"carta":{g:"f",de:"Karte"}
+};
+const deArticleGender={
+  "der":"m","den":"m","dem":"m","ein":"m","einen":"m","einem":"m",
+  "die":"f","eine":"f","einer":"f","das":"n"
+};
+const itArticles={m:{def:"il",indef:"un"},f:{def:"la",indef:"una"}};
+const contractions={"a il":"al","a lo":"allo","a la":"alla","a i":"ai","a gli":"agli","a le":"alle","di il":"del","di lo":"dello","di la":"della","di i":"dei","di gli":"degli","di le":"delle","in il":"nel","in lo":"nello","in la":"nella","in i":"nei","in gli":"negli","in le":"nelle"};
+const verbForms={
+  "de-it":{
+    "ich bin":"sono","du bist":"sei","er ist":"è","sie ist":"è","wir sind":"siamo","ihr seid":"siete","sie sind":"sono",
+    "ich habe":"ho","du hast":"hai","er hat":"ha","sie hat":"ha","wir haben":"abbiamo","ihr habt":"avete",
+    "ich kann":"posso","du kannst":"puoi","wir können":"possiamo","sie können":"può",
+    "ich muss":"devo","du musst":"devi","wir müssen":"dobbiamo","sie müssen":"deve",
+    "ich will":"voglio","ich möchte":"vorrei","wir möchten":"vorremmo","ich gehe":"vado","wir gehen":"andiamo",
+    "ich komme":"vengo","wir kommen":"veniamo","ich verstehe":"capisco","ich spreche":"parlo"
+  },
+  "it-de":{
+    "sono":"ich bin","sei":"du bist","è":"ist","siamo":"wir sind","siete":"ihr seid",
+    "ho":"ich habe","hai":"du hast","ha":"hat","abbiamo":"wir haben","avete":"Sie haben",
+    "posso":"ich kann","puoi":"du kannst","può":"Sie können","possiamo":"wir können",
+    "devo":"ich muss","devi":"du musst","deve":"Sie müssen","dobbiamo":"wir müssen",
+    "voglio":"ich will","vorrei":"ich möchte","vorremmo":"wir möchten","vado":"ich gehe","andiamo":"wir gehen",
+    "vengo":"ich komme","veniamo":"wir kommen","capisco":"ich verstehe","parlo":"ich spreche"
+  }
+};
+
+const languageSignals={
+  de:{strong:["ich","nicht","bitte","danke","brauche","möchte","kann","können","haben","wo","wie","was","der","die","das","ein","eine","und","ist","sind","mit","ohne","für","zum","zur","heute","morgen","rechnung","bahnhof","arzt","hilfe"],chars:/[äöüß]/gi,endings:["ung","keit","heit","chen","sch"]},
+  it:{strong:["io","non","per favore","grazie","prego","vorrei","posso","può","avete","dove","come","quanto","cosa","il","lo","la","gli","le","un","una","e","è","sono","con","senza","per","alla","del","oggi","domani","conto","stazione","medico","aiuto"],chars:/[àèéìòù]/gi,endings:["zione","mente","are","ere","ire","gli"]}
+};
+function detectLanguage(text){
+  const clean=n(text||"");
+  if(!clean)return{lang:null,confidence:0,label:"Noch kein Text"};
+  const words=clean.split(/\s+/).filter(Boolean);let scores={de:0,it:0};
+  for(const lang of ["de","it"]){
+    const sig=languageSignals[lang];
+    for(const token of sig.strong){const phrase=token.includes(" ");const hit=phrase?clean.includes(token):words.includes(token);if(hit)scores[lang]+=phrase?3:2}
+    scores[lang]+=(clean.match(sig.chars)||[]).length*3;
+    for(const w of words)if(sig.endings.some(e=>w.length>e.length+2&&w.endsWith(e)))scores[lang]+=.7;
+  }
+  const total=scores.de+scores.it;
+  if(total===0)return{lang:null,confidence:0,label:"Sprache unsicher"};
+  const lang=scores.de>=scores.it?"de":"it",other=lang==="de"?scores.it:scores.de;
+  const confidence=Math.round(Math.min(99,55+45*((scores[lang]-other)/Math.max(1,total))));
+  if(scores[lang]-other<1.2)return{lang:null,confidence:Math.max(35,confidence-25),label:"Sprache unsicher"};
+  return{lang,confidence,label:lang==="de"?"Deutsch erkannt":"Italienisch erkannt"};
+}
+function effectiveSourceLang(text=$("sourceText")?.value||""){
+  const selected=$("sourceLang").value;if(selected!=="auto")return selected;
+  return detectLanguage(text).lang||($("targetLang").value==="de"?"it":"de");
+}
+function updateDetection(applyDirection=false){
+  const badge=$("detectBadge"),selected=$("sourceLang").value;
+  if(selected!=="auto"){badge.className=`detect-badge ${selected}`;badge.textContent=selected==="de"?"🇩🇪 Deutsch fest gewählt":"🇮🇹 Italienisch fest gewählt";return selected}
+  const d=detectLanguage($("sourceText").value);badge.className=`detect-badge ${d.lang||"unsure"}`;badge.textContent=d.lang?`${d.lang==="de"?"🇩🇪":"🇮🇹"} ${d.label} · ${d.confidence} %`:`✨ ${d.label}`;
+  if(applyDirection&&d.lang){$("targetLang").value=d.lang==="de"?"it":"de";updateTitles()}
+  return d.lang
+}
+const translationTests=[
+ ["de","it","Hallo","Ciao"],["it","de","Grazie","Danke"],["de","it","Ich brauche einen Arzt.","Ho bisogno di un medico."],["it","de","Ho bisogno di aiuto.","Ich brauche Hilfe."],
+ ["de","it","Wo ist der Supermarkt?","Dov'è il supermercato?"],["it","de","Dov'è la stazione?","Wo ist der Bahnhof?"],["de","it","Die Rechnung, bitte.","Il conto, per favore."],["it","de","Posso pagare con la carta?","Kann ich mit Karte bezahlen?"],
+ ["de","it","Ich verstehe nicht.","Non capisco."],["it","de","Può parlare più lentamente?","Können Sie langsamer sprechen?"],["de","it","Ich habe eine Reservierung.","Ho una prenotazione."],["it","de","Quanto costa?","Wie viel kostet das?"],
+ ["de","it","Ohne Käse, bitte.","Senza formaggio, per favore."],["it","de","Dove posso parcheggiare?","Wo kann ich parken?"],["de","it","Ich habe Schmerzen.","Ho dolore."],["it","de","Il Wi-Fi non funziona.","Das WLAN funktioniert nicht."]
+];
+function comparable(v){return n(v).replace(/[^a-zà-ùäöüß0-9 ]/gi,"").replace(/\s+/g," ").trim()}
+function similarity(a,b){const A=new Set(comparable(a).split(" ").filter(Boolean)),B=new Set(comparable(b).split(" ").filter(Boolean));if(!A.size&&!B.size)return 1;const inter=[...A].filter(x=>B.has(x)).length;return (2*inter)/(A.size+B.size)}
+function runTranslationTests(){
+  const results=translationTests.map(([s,t,input,expected])=>{const actual=localTranslate(input,s,t).text;const exact=comparable(actual)===comparable(expected),score=similarity(actual,expected);return{s,t,input,expected,actual,status:exact?"pass":score>=.65?"partial":"fail",score}});
+  const counts={pass:0,partial:0,fail:0};results.forEach(r=>counts[r.status]++);const pct=Math.round(100*(counts.pass+.5*counts.partial)/results.length);
+  $("testSummary").innerHTML=`<div class="test-stat"><strong>${pct}%</strong><span>Qualitätswert</span></div><div class="test-stat"><strong>${counts.pass}</strong><span>Exakt</span></div><div class="test-stat"><strong>${counts.partial}</strong><span>Teiltreffer</span></div><div class="test-stat"><strong>${counts.fail}</strong><span>Fehler</span></div>`;
+  $("testResults").innerHTML=results.map(r=>`<div class="test-row ${r.status}"><div class="route">${r.s.toUpperCase()} → ${r.t.toUpperCase()} · ${r.status==="pass"?"✓ Exakt":r.status==="partial"?"≈ Teiltreffer":"✕ Fehler"}</div><div>${esc(r.input)}</div><div class="actual">${esc(r.actual)}</div><div class="expected">Soll: ${esc(r.expected)}</div></div>`).join("");
+  toast(`Test abgeschlossen: ${counts.pass} exakt, ${counts.partial} teilweise, ${counts.fail} fehlerhaft.`);return results
+}
+
+function translateTerm(term,s,t){
+  const pair=`${s}-${t}`,clean=n(term);
+  return dict[pair][clean]||wordDict[pair][clean]||null;
+}
+function italianArticle(noun,kind="def"){
+  const clean=n(noun).replace(/^(il|lo|la|i|gli|le|un|uno|una)\s+/,"");
+  const info=nounInfo[clean],g=info?.g||(/[aà]$/.test(clean)?"f":"m");
+  if(kind==="none")return "";
+  if(g==="f")return kind==="indef"?"una":"la";
+  if(/^(s[^aeiou]|z|gn|ps|x|y)/i.test(clean))return kind==="indef"?"uno":"lo";
+  return kind==="indef"?"un":"il";
+}
+function applyContractions(text){
+  let out=text;
+  Object.entries(contractions).forEach(([a,b])=>out=out.replace(new RegExp(`\\b${a}\\b`,'gi'),b));
+  return out.replace(/\bdi ([aeiou])/gi,"d'$1");
+}
+function translateNounPhrase(term,s,t,opts={}){
+  const raw=term.trim().replace(/[,.!?]+$/,'');
+  if(!raw)return raw;
+  if(s==='de'){
+    const m=raw.match(/^(der|die|das|den|dem|ein|eine|einen|einem|einer)\s+(.+)$/i);
+    const article=m?m[1].toLowerCase():null,noun=m?m[2]:raw;
+    const translated=translateTerm(noun,s,t)||wordFallback(noun,s,t);
+    if(!translated)return noun;
+    const kind=opts.noArticle?"none":(article&&article.startsWith('ein')?"indef":article?"def":opts.article||"none");
+    const art=italianArticle(translated,kind);
+    return `${art?art+' ':''}${translated}`.trim();
+  }
+  const m=raw.match(/^(il|lo|la|i|gli|le|un|uno|una)\s+(.+)$/i);
+  const noun=m?m[2]:raw, translated=translateTerm(noun,s,t)||wordFallback(noun,s,t);
+  if(!m)return translated;
+  const a=m[1].toLowerCase(),indef=/^(un|uno|una)$/.test(a);
+  const gender=(a==='la'||a==='una'||a==='le')?'f':'m';
+  const deArt=indef?(gender==='f'?'eine':'ein'):(gender==='f'?'die':'der');
+  return `${deArt} ${translated}`;
+}
+function translateVerbPrefix(text,s,t){
+  const clean=n(text),forms=verbForms[`${s}-${t}`];
+  for(const key of Object.keys(forms).sort((a,b)=>b.length-a.length)){
+    if(clean===key)return forms[key];
+    if(clean.startsWith(key+' '))return forms[key]+' '+text.trim().slice(key.length).trim();
+  }
+  return null;
+}
+function templateTranslate(text,s,t){
+  const raw=text.trim(),clean=n(raw),punct=/[?!]$/.test(raw)?raw.slice(-1):(/[.]$/.test(raw)?'.':'');
+  const finish=x=>{let r=applyContractions(x.replace(/\s+/g,' ').trim());if(punct&&!/[.!?]$/.test(r))r+=punct;return r};
+  const rules=s==='de'?
+    [
+      [/^ich (?:hätte|möchte) gerne (.+)$/i,x=>`Vorrei ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^ich möchte (.+)$/i,x=>`Vorrei ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^ich brauche (.+)$/i,x=>`Ho bisogno di ${translateNounPhrase(x,s,t,{article:"indef"})}`],
+      [/^ich suche (.+)$/i,x=>`Cerco ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^wo ist (.+)$/i,x=>`Dov'è ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^wo sind (.+)$/i,x=>`Dove sono ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^haben sie (.+)$/i,x=>`Avete ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^ich habe kein(?:e|en)? (.+)$/i,x=>`Non ho ${translateNounPhrase(x,s,t,{article:"indef"})}`],
+      [/^ich habe (.+)$/i,x=>`Ho ${translateNounPhrase(x,s,t,{article:"indef"})}`],
+      [/^ich bin nicht (.+)$/i,x=>`Non sono ${wordFallback(x,s,t)}`],
+      [/^ich bin (.+)$/i,x=>`Sono ${wordFallback(x,s,t)}`],
+      [/^ich kann nicht (.+)$/i,x=>`Non posso ${wordFallback(x,s,t)}`],
+      [/^ich muss (.+)$/i,x=>`Devo ${wordFallback(x,s,t)}`],
+      [/^kann ich (.+)$/i,x=>`Posso ${wordFallback(x,s,t)}`],
+      [/^können sie (.+)$/i,x=>`Può ${wordFallback(x,s,t)}`],
+      [/^wie viel kostet (.+)$/i,x=>`Quanto costa ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^ohne (.+)$/i,x=>`Senza ${translateNounPhrase(x,s,t,{noArticle:true})}`],
+      [/^mit (.+)$/i,x=>`Con ${translateNounPhrase(x,s,t,{article:"def"})}`],
+      [/^in (?:dem|der|den) (.+)$/i,x=>`In ${translateNounPhrase(x,s,t,{article:"def"})}`]
+    ]:
+    [
+      [/^vorrei (.+)$/i,x=>`Ich möchte ${translateNounPhrase(x,s,t)}`],
+      [/^ho bisogno di (.+)$/i,x=>`Ich brauche ${translateNounPhrase(x,s,t)}`],
+      [/^cerco (.+)$/i,x=>`Ich suche ${translateNounPhrase(x,s,t)}`],
+      [/^dov(?:'|’)?è (.+)$/i,x=>`Wo ist ${translateNounPhrase(x,s,t)}`],
+      [/^dove sono (.+)$/i,x=>`Wo sind ${translateNounPhrase(x,s,t)}`],
+      [/^avete (.+)$/i,x=>`Haben Sie ${translateNounPhrase(x,s,t)}`],
+      [/^non ho (.+)$/i,x=>`Ich habe kein ${translateNounPhrase(x,s,t,{noArticle:true})}`],
+      [/^ho (.+)$/i,x=>`Ich habe ${translateNounPhrase(x,s,t)}`],
+      [/^non sono (.+)$/i,x=>`Ich bin nicht ${wordFallback(x,s,t)}`],
+      [/^sono (.+)$/i,x=>`Ich bin ${wordFallback(x,s,t)}`],
+      [/^non posso (.+)$/i,x=>`Ich kann nicht ${wordFallback(x,s,t)}`],
+      [/^devo (.+)$/i,x=>`Ich muss ${wordFallback(x,s,t)}`],
+      [/^posso (.+)$/i,x=>`Kann ich ${wordFallback(x,s,t)}`],
+      [/^può (.+)$/i,x=>`Können Sie ${wordFallback(x,s,t)}`],
+      [/^quanto costa (.+)$/i,x=>`Wie viel kostet ${translateNounPhrase(x,s,t)}`],
+      [/^senza (.+)$/i,x=>`Ohne ${translateNounPhrase(x,s,t,{noArticle:true})}`],
+      [/^con (.+)$/i,x=>`Mit ${translateNounPhrase(x,s,t)}`]
+    ];
+  for(const [rx,make] of rules){const m=clean.match(rx);if(m)return finish(make(m[1]))}
+  const vf=translateVerbPrefix(raw,s,t);if(vf&&vf.toLowerCase()!==clean)return finish(wordFallback(vf,s,t));
+  return null;
+}
+function wordFallback(text,s,t){
+  const pair=`${s}-${t}`;
+  let work=text.trim();
+  const multi=Object.keys(wordDict[pair]).filter(k=>k.includes(' ')).sort((a,b)=>b.length-a.length);
+  const placeholders=[];
+  for(const term of multi){const rx=new RegExp(`\\b${term.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}\\b`,'gi');work=work.replace(rx,m=>{const id=`§${placeholders.length}§`;placeholders.push(preserveCase(m,wordDict[pair][term]));return id})}
+  work=work.replace(/[A-Za-zÀ-ÿÄÖÜäöüß]+/g,w=>preserveCase(w,wordDict[pair][n(w)]||w));
+  placeholders.forEach((value,i)=>work=work.replace(`§${i}§`,value));
+  return applyContractions(work.replace(/\s+([,.!?;:])/g,'$1').replace(/\s+/g,' ').trim());
+}
+function localTranslate(text,s,t){
+  const pair=`${s}-${t}`,exact=dict[pair][n(text)];
+  if(exact)return{text:exact,engine:"Offline-Grammatik · vollständiger Satz"};
+  const templated=templateTranslate(text,s,t);
+  if(templated)return{text:templated,engine:"Offline-Grammatik · Satzbau"};
+  const fallback=wordFallback(text,s,t);
+  const sourceWords=(text.match(/[A-Za-zÀ-ÿÄÖÜäöüß]+/g)||[]).length;
+  const unchanged=(fallback.match(/[A-Za-zÀ-ÿÄÖÜäöüß]+/g)||[]).filter(w=>text.toLowerCase().includes(w.toLowerCase())).length;
+  if(fallback&&fallback.toLowerCase()!==text.trim().toLowerCase()&&(!sourceWords||unchanged/sourceWords<0.72))return{text:fallback,engine:"Offline-Grammatik · Wortschatz"};
+  return{text:"Für diesen Satz reicht die lokale Grammatik noch nicht aus. Nutze den Online-Modus oder formuliere den Satz kürzer.",engine:"Offline-Lücke"};
+}
+function onlineAllowed(){
+  if(!navigator.onLine)return false;
+  const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  const cellular=c&&(/cellular/i.test(c.type||"")||/2g|3g|4g|5g/i.test(c.effectiveType||""));
+  return state.settings.mobileData||!cellular;
+}
+function onlineConfig(){
+  const provider=state.settings.provider||"libre";
+  let endpoint=String(state.settings.endpoint||"").trim();
+  if(provider==="mymemory"&&!endpoint)endpoint="https://api.mymemory.translated.net/get";
+  return{provider,endpoint,key:String(state.settings.apiKey||"").trim(),timeout:(Number(state.settings.requestTimeout)||15)*1000};
+}
+function onlineErrorMessage(err){
+  if(err?.name==="AbortError")return"Zeitlimit überschritten";
+  if(!navigator.onLine)return"Keine Internetverbindung";
+  return String(err?.message||"Online-Anfrage fehlgeschlagen").slice(0,160);
+}
+async function onlineTranslate(text,s,t,{test=false}={}){
+  if(!onlineAllowed())throw new Error("Online-Zugriff ist durch Netzwerk oder Einstellungen blockiert");
+  const cfg=onlineConfig();if(!cfg.endpoint)throw new Error("Kein Online-Endpunkt eingetragen");
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),cfg.timeout);
+  try{
+    let url=cfg.endpoint,options={signal:controller.signal};
+    if(cfg.provider==="mymemory"){
+      const u=new URL(url);u.searchParams.set("q",text);u.searchParams.set("langpair",`${s}|${t}`);if(cfg.key)u.searchParams.set("key",cfg.key);url=u.toString();
+    }else{
+      const body={q:text,source:s,target:t,format:"text"};if(cfg.key)body.api_key=cfg.key;
+      options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(body),signal:controller.signal};
+    }
+    const r=await fetch(url,options);let d=null;try{d=await r.json()}catch{throw new Error(`Ungültige Serverantwort (${r.status})`)}
+    if(!r.ok)throw new Error(d?.error||d?.message||`HTTP ${r.status}`);
+    const translated=cfg.provider==="mymemory"?d?.responseData?.translatedText:(d?.translatedText??d?.translation??d?.data?.translatedText??d?.data?.translation);
+    if(typeof translated!=="string"||!translated.trim())throw new Error("Keine Übersetzung in der Antwort gefunden");
+    return{ text:translated.trim(), provider:cfg.provider, tested:test };
+  }finally{clearTimeout(timer)}
+}
+
+const MODEL_DB="ItaliaTranslateModelsV1",MODEL_STORE="packages";
+function openModelDb(){return new Promise((resolve,reject)=>{if(!("indexedDB" in window))return reject(new Error("IndexedDB wird nicht unterstützt"));const r=indexedDB.open(MODEL_DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(MODEL_STORE))r.result.createObjectStore(MODEL_STORE,{keyPath:"id"})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error("Modelldatenbank nicht verfügbar"))})}
+async function modelDbGet(id="active"){const db=await openModelDb();return new Promise((resolve,reject)=>{const tx=db.transaction(MODEL_STORE,"readonly"),r=tx.objectStore(MODEL_STORE).get(id);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);tx.oncomplete=()=>db.close()})}
+async function modelDbPut(value){const db=await openModelDb();return new Promise((resolve,reject)=>{const tx=db.transaction(MODEL_STORE,"readwrite");tx.objectStore(MODEL_STORE).put(value);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)})}
+async function modelDbClear(){const db=await openModelDb();return new Promise((resolve,reject)=>{const tx=db.transaction(MODEL_STORE,"readwrite");tx.objectStore(MODEL_STORE).clear();tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)})}
+function formatBytes(v){if(!Number.isFinite(v))return "unbekannt";const u=["B","KB","MB","GB"];let i=0;while(v>=1024&&i<u.length-1){v/=1024;i++}return `${v.toFixed(i?1:0)} ${u[i]}`}
+function connectionReport(){const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;if(!c)return{text:"Netzwerktyp unbekannt",warning:false};const type=c.type||c.effectiveType||"unbekannt";return{text:`Netzwerk: ${type}${c.saveData?" · Datensparmodus":""}`,warning:c.type==="cellular"||["slow-2g","2g","3g"].includes(c.effectiveType)||!!c.saveData}}
+async function requestPersistentStorage(){if(!navigator.storage?.persist)return toast("Dieser Browser unterstützt keine dauerhafte Speicherreservierung.");try{const granted=await navigator.storage.persist();$("modelAdvice").textContent=granted?"Dauerhafter Browserspeicher wurde gewährt. Der Modellcache wird seltener automatisch gelöscht.":"Dauerhafter Speicher wurde nicht gewährt. Der Browser kann den Modellcache bei Platzmangel löschen.";toast(granted?"Dauerhafter Speicher ist aktiv.":"Speicherreservierung wurde abgelehnt.")}catch{toast("Speicherreservierung ist fehlgeschlagen.")}}
+async function inspectLocalAi(){
+  const parts=[],warnings=[];parts.push(`Browser-KI: ${("Translator" in window&&typeof Translator.create==="function")?"verfügbar":"nicht verfügbar"}`);parts.push(`CPU-Kerne: ${navigator.hardwareConcurrency||"unbekannt"}`);if(navigator.deviceMemory){parts.push(`Arbeitsspeicher: ca. ${navigator.deviceMemory} GB`);if(navigator.deviceMemory<4)warnings.push("Unter 4 GB RAM kann die lokale KI langsam oder instabil sein.")};parts.push(`WebGPU: ${navigator.gpu?"verfügbar":"nicht erkannt"}`);const net=connectionReport();parts.push(net.text);if(net.warning)warnings.push("Für den ersten Modelldownload besser WLAN verwenden.");
+  try{if(navigator.storage?.estimate){const e=await navigator.storage.estimate(),free=Math.max(0,(e.quota||0)-(e.usage||0));parts.push(`Browserspeicher frei: ca. ${formatBytes(free)}`);if(free<500*1024*1024)warnings.push("Weniger als 500 MB Browserspeicher frei.")}}catch{}
+  if(state.settings.localAiDevice==="webgpu"&&!navigator.gpu)warnings.push("WebGPU ist ausgewählt, wurde aber nicht erkannt. WASM verwenden.");$("deviceReport").textContent=parts.join(" · ");$("modelAdvice").textContent=warnings.length?warnings.join(" "):"Gerät wirkt grundsätzlich geeignet. Der erste Modellstart kann trotzdem mehrere Minuten dauern.";await refreshModelStatus();return parts.join(" · ")
+}
+async function refreshModelStatus(){
+  let pkg=null;try{pkg=await modelDbGet()}catch{}
+  const adapter=window.ItaliaTranslateLocalModelAdapter;
+  const adapterReady=!!(adapter&&typeof adapter.translate==="function");const neuralReady=[...neuralPipelines.values()].length>0;
+  if(pkg){$("modelReport").textContent=`Vorbereitet: ${pkg.name||"Modellpaket"} ${pkg.version||""} · ${formatBytes(pkg.totalBytes||0)} · Adapter ${adapterReady?"bereit":"fehlt"}`;$("localAiBadge").textContent=adapterReady?"Bereit":"Paket gespeichert"}
+  else{$("modelReport").textContent=`Transformers.js ${neuralReady?"geladen":"noch nicht geladen"} · Adapter ${adapterReady?"erkannt":"nicht geladen"}`;$("localAiBadge").textContent=neuralReady?"KI geladen":adapterReady?"Adapter bereit":"Nicht bereit"}
+}
+function validateManifest(m){if(!m||typeof m!=="object")throw new Error("Manifest ist ungültig");if(!Array.isArray(m.files)||!m.files.length)throw new Error("Manifest enthält keine Dateien");const files=m.files.map((f,i)=>{if(typeof f==="string")return{url:f,name:`Datei ${i+1}`};if(!f||typeof f.url!=="string")throw new Error("Eine Manifestdatei hat keine URL");return{url:f.url,name:String(f.name||`Datei ${i+1}`),sha256:typeof f.sha256==="string"?f.sha256:""}});return{name:String(m.name||"Lokales Übersetzungsmodell"),version:String(m.version||""),adapter:String(m.adapter||"external"),files}}
+async function prepareLocalModel(){
+  const manifestUrl=$("modelManifestUrl").value.trim();if(!manifestUrl)return toast("Bitte zuerst die Adresse eines Modellmanifests eintragen.");
+  const p=$("modelProgress"),btn=$("downloadModelBtn");modelDownloadController=new AbortController();btn.disabled=true;$("cancelModelBtn").disabled=false;p.hidden=false;p.value=0;$("modelReport").textContent="Manifest wird geladen …";
+  try{const mr=await fetch(manifestUrl,{signal:modelDownloadController.signal,cache:"no-store"});if(!mr.ok)throw new Error(`Manifest HTTP ${mr.status}`);const manifest=validateManifest(await mr.json());const blobs=[];let total=0;
+    for(let i=0;i<manifest.files.length;i++){const f=manifest.files[i],url=new URL(f.url,manifestUrl).toString();$("modelReport").textContent=`Lade ${f.name} (${i+1}/${manifest.files.length}) …`;const r=await fetch(url,{signal:modelDownloadController.signal});if(!r.ok)throw new Error(`${f.name}: HTTP ${r.status}`);const blob=await r.blob();total+=blob.size;blobs.push({name:f.name,url,blob,sha256:f.sha256});p.value=Math.round(((i+1)/manifest.files.length)*100)}
+    await modelDbPut({id:"active",name:manifest.name,version:manifest.version,adapter:manifest.adapter,manifestUrl,totalBytes:total,files:blobs,storedAt:new Date().toISOString()});$("modelReport").textContent=`${manifest.name} wurde lokal vorbereitet (${formatBytes(total)}).`;toast("Modellpaket wurde lokal gespeichert.");await refreshModelStatus()
+  }catch(err){if(err?.name==="AbortError"){$("modelReport").textContent="Download wurde abgebrochen.";toast("Modelldownload abgebrochen.")}else{$("modelReport").textContent=`Fehler: ${err?.message||"Download fehlgeschlagen"}`;toast("Modell konnte nicht vorbereitet werden.")}}
+  finally{modelDownloadController=null;btn.disabled=false;$("cancelModelBtn").disabled=true;setTimeout(()=>p.hidden=true,1200)}
+}
+
+const TRANSFORMERS_CDN="https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+const NEURAL_MODELS={
+  "de-en":"Xenova/opus-mt-de-en",
+  "en-it":"Xenova/opus-mt-en-it",
+  "it-en":"Xenova/opus-mt-it-en",
+  "en-de":"Xenova/opus-mt-en-de"
+};
+function neuralStatus(message,progress=null){
+  $("modelReport").textContent=message;
+  if(progress!==null){const p=$("modelProgress");p.hidden=false;p.value=Math.max(0,Math.min(100,progress))}
+}
+async function loadTransformersModule(){
+  if(!transformersModulePromise)transformersModulePromise=import(TRANSFORMERS_CDN).then(m=>{if(m.env){m.env.allowLocalModels=false;m.env.useBrowserCache=true}return m}).catch(err=>{transformersModulePromise=null;throw err});
+  return transformersModulePromise;
+}
+function neuralRoute(source,target){
+  if(source==="de"&&target==="it")return [["de-en","Deutsch → Englisch"],["en-it","Englisch → Italienisch"]];
+  if(source==="it"&&target==="de")return [["it-en","Italienisch → Englisch"],["en-de","Englisch → Deutsch"]];
+  return null;
+}
+async function getNeuralPipeline(key){
+  const dtype=state.settings.localAiDtype||"q8",device=state.settings.localAiDevice||"wasm";
+  const cacheKey=`${key}:${dtype}:${device}`;
+  if(neuralPipelines.has(cacheKey))return neuralPipelines.get(cacheKey);
+  const promise=(async()=>{
+    const {pipeline}=await loadTransformersModule();
+    const options={dtype,progress_callback:x=>{
+      if(x?.status==="progress"&&Number.isFinite(x.progress))neuralStatus(`Lade ${NEURAL_MODELS[key]} · ${Math.round(x.progress)} %`,x.progress);
+      else if(x?.status==="ready")neuralStatus(`${NEURAL_MODELS[key]} ist bereit.`,100);
+    }};
+    if(device==="webgpu")options.device="webgpu";
+    return pipeline("translation",NEURAL_MODELS[key],options);
+  })();
+  neuralPipelines.set(cacheKey,promise);
+  try{return await promise}catch(err){neuralPipelines.delete(cacheKey);throw err}
+}
+async function transformersTranslate(text,source,target){
+  const route=neuralRoute(source,target);if(!route)return null;
+  const runToken=neuralRunToken;neuralBusy=true;
+  let value=text;const started=performance.now();
+  for(let i=0;i<route.length;i++){
+    if(runToken!==neuralRunToken)throw new DOMException("Vorgang abgebrochen","AbortError");
+    const [key,label]=route[i];neuralStatus(`${label}: Modell wird vorbereitet …`,i*50);
+    const pipe=await getNeuralPipeline(key);neuralStatus(`${label}: Text wird übersetzt …`,i*50+45);
+    const result=await pipe(value,{max_new_tokens:256,num_beams:2});
+    value=Array.isArray(result)?(result[0]?.translation_text||result[0]?.generated_text||""):(result?.translation_text||result?.generated_text||"");
+    if(!value.trim())throw new Error(`${label} lieferte keinen Text`);
+  }
+  const seconds=((performance.now()-started)/1000).toFixed(1);neuralBusy=false;neuralStatus(`Lokale KI bereit · letzte Übersetzung ${seconds} s`,100);setTimeout(()=>$("modelProgress").hidden=true,1500);
+  return{text:value.trim(),engine:`Lokale KI · Marian Q${(state.settings.localAiDtype||"q8").slice(1)} · ${seconds} s`};
+}
+async function prepareBuiltInModel(){
+  const source=effectiveSourceLang($("sourceText").value||"Guten Tag"),target=source==="de"?"it":"de";
+  const route=neuralRoute(source,target);if(!route)throw new Error("Diese Sprachrichtung wird nicht unterstützt");
+  $("downloadModelBtn").disabled=true;$("testLocalAiBtn").disabled=true;
+  try{for(let i=0;i<route.length;i++){neuralStatus(`Modell ${i+1}/2 wird geladen: ${route[i][1]}`,i*50);await getNeuralPipeline(route[i][0])}neuralStatus("Beide Modelle dieser Sprachrichtung sind bereit.",100);$("localAiBadge").textContent="KI bereit";toast("Lokale KI wurde geladen.")}
+  finally{$("downloadModelBtn").disabled=false;$("testLocalAiBtn").disabled=false;setTimeout(()=>$("modelProgress").hidden=true,1500)}
+}
+async function testBuiltInModel(){
+  const b=$("testLocalAiBtn");b.disabled=true;
+  try{const r=await transformersTranslate("Ich brauche einen Arzt.","de","it");if(!r?.text)throw new Error("Kein Ergebnis");setOutput(r.text,r.engine);$("engineInfo").textContent=`KI-Test · ${r.text}`;toast("Lokale KI funktioniert.")}
+  catch(err){neuralStatus(`KI-Test fehlgeschlagen: ${err?.message||err}`);toast("Lokale KI konnte nicht gestartet werden.")}
+  finally{b.disabled=false}
+}
+
+const aiBenchmarkCases=[["de","it","Guten Morgen!","Buongiorno!"],["de","it","Ich brauche einen Arzt.","Ho bisogno di un medico."],["it","de","Dov'è la stazione?","Wo ist der Bahnhof?"],["it","de","Vorrei pagare con la carta.","Ich möchte mit Karte bezahlen."]];
+async function runAiBenchmark(){const btn=$("runAiBenchmarkBtn"),summary=$("aiBenchmarkSummary"),results=$("aiBenchmarkResults");btn.disabled=true;$("cancelModelBtn").disabled=false;results.innerHTML="";summary.innerHTML='<div class="test-stat"><strong>…</strong><span>KI wird vorbereitet</span></div>';const rows=[],totalStart=performance.now();try{for(let i=0;i<aiBenchmarkCases.length;i++){const [source,target,input,expected]=aiBenchmarkCases[i];neuralStatus(`Benchmark ${i+1}/${aiBenchmarkCases.length}`,Math.round(i/aiBenchmarkCases.length*100));const started=performance.now(),r=await transformersTranslate(input,source,target),ms=Math.round(performance.now()-started),score=Math.round(similarity(comparable(r.text),comparable(expected))*100);rows.push({ms,score});results.insertAdjacentHTML("beforeend",`<div class="test-row"><div><strong>${source.toUpperCase()} → ${target.toUpperCase()} · ${score}%</strong><div>${escapeHtml(input)}</div><small>Soll: ${escapeHtml(expected)}<br>KI: ${escapeHtml(r.text)} · ${(ms/1000).toFixed(1)} s</small></div><span class="badge">${score>=80?"Gut":score>=55?"Brauchbar":"Prüfen"}</span></div>`)}const avg=Math.round(rows.reduce((a,x)=>a+x.score,0)/rows.length),avgMs=Math.round(rows.reduce((a,x)=>a+x.ms,0)/rows.length),total=Math.round(performance.now()-totalStart);summary.innerHTML=`<div class="test-stat"><strong>${avg}%</strong><span>Ø Ähnlichkeit</span></div><div class="test-stat"><strong>${(avgMs/1000).toFixed(1)} s</strong><span>Ø pro Satz</span></div><div class="test-stat"><strong>${(total/1000).toFixed(1)} s</strong><span>Gesamtlaufzeit</span></div>`;toast("KI-Benchmark abgeschlossen.")}catch(err){summary.innerHTML=`<div class="test-stat"><strong>Fehler</strong><span>${escapeHtml(err?.message||String(err))}</span></div>`;toast("KI-Benchmark konnte nicht abgeschlossen werden.")}finally{btn.disabled=false;$("cancelModelBtn").disabled=true;neuralBusy=false}}
+
+async function localAiTranslate(text,s,t){
+  if(!state.settings.localAiEnabled)return null;const profile=state.settings.localModelProfile||"auto";
+  if(profile==="auto"||profile==="browser"){const browser=await browserTranslate(text,s,t);if(browser)return{text:browser,engine:"Lokale Browser-KI"};if(profile==="browser")return null}
+  if(profile==="auto"||profile==="transformers"){
+    try{const result=await transformersTranslate(text,s,t);if(result)return result}catch(err){console.warn("Transformers.js:",err);neuralStatus(`Lokale KI nicht verfügbar: ${err?.message||err}`);if(profile==="transformers")return null}
+  }
+  if(profile!=="transformers"&&profile!=="browser"){
+    const adapter=window.ItaliaTranslateLocalModelAdapter;if(!adapter||typeof adapter.translate!=="function")return null;
+    try{if(typeof adapter.ready==="function"&&!await adapter.ready())return null;const result=await adapter.translate({text,sourceLanguage:s,targetLanguage:t,getPackage:modelDbGet});const translated=typeof result==="string"?result:result?.text;if(typeof translated==="string"&&translated.trim())return{text:translated.trim(),engine:`Lokale KI · ${result?.model||adapter.name||"Adapter"}`}}catch(err){console.warn("Lokaler KI-Adapter:",err)}
+  }
+  return null
+}
+
+async function browserTranslate(text,s,t){
+  try{if(!("Translator" in window)||typeof Translator.create!=="function")return null;const tr=await Translator.create({sourceLanguage:s,targetLanguage:t});return await tr.translate(text)}catch{return null}
+}
+async function translate(text,s,t){
+  if(state.mode==="offline")return localTranslate(text,s,t);
+  if(state.mode==="auto"&&state.settings.offlineFirst){const l=localTranslate(text,s,t);if(l.engine!=="Offline-Lücke")return l}
+  const localAi=await localAiTranslate(text,s,t);if(localAi)return localAi;
+  if(onlineAllowed()){
+    try{const online=await onlineTranslate(text,s,t);if(online?.text)return{text:online.text,engine:`Online · ${online.provider}`}}
+    catch(err){state.lastOnlineError=onlineErrorMessage(err)}
+  }
+  const fallback=localTranslate(text,s,t);if(state.lastOnlineError&&fallback.engine==="Offline-Lücke")fallback.engine=`Offline-Fallback · ${state.lastOnlineError}`;return fallback
+}
+function setOutput(t,e){$("outputText").textContent=t;$("outputText").classList.remove("placeholder");$("engineLabel").textContent=e;state.last=t}
+async function perform(){
+  const text=$("sourceText").value.trim();if(!text)return toast("Bitte zuerst Text eingeben.");
+  const btn=$("translateBtn");btn.disabled=true;btn.textContent="Übersetze …";
+  try{
+    const sourceLang=effectiveSourceLang(text);if($("sourceLang").value==="auto"){$("targetLang").value=sourceLang==="de"?"it":"de";updateTitles()}const r=await translate(text,sourceLang,$("targetLang").value);setOutput(r.text,r.engine);$("engineInfo").textContent=`${r.engine} · ${sourceLang.toUpperCase()} → ${$("targetLang").value.toUpperCase()}`;
+    if(state.settings.saveHistory){state.history.unshift({source:text,translation:r.text,sourceLang:sourceLang,targetLang:$("targetLang").value});state.history=state.history.slice(0,30)}
+    save();renderLists();if(state.settings.autoSpeak)speak(r.text,$("targetLang").value);updateDetection(false);
+  }catch{toast("Die Übersetzung konnte nicht abgeschlossen werden.")}
+  finally{btn.disabled=false;btn.innerHTML="Übersetzen&nbsp;&nbsp;⇄"}
+}
+function speak(t,l){if(!("speechSynthesis" in window))return toast("Sprachausgabe nicht unterstützt.");if(!t)return toast("Kein Text vorhanden.");speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=l==="it"?"it-IT":"de-DE";u.rate=.95;speechSynthesis.speak(u)}
+function recognize(l,cb){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return toast("Spracheingabe nicht unterstützt.");const r=new R();r.lang=l==="it"?"it-IT":"de-DE";r.interimResults=false;r.onresult=e=>cb(e.results[0][0].transcript);r.onerror=()=>toast("Sprache konnte nicht erkannt werden.");r.start()}
+function updateTitles(){const s=$("sourceLang").value;$("inputTitle").textContent=s==="auto"?"Automatische Erkennung":s==="it"?"Italienisch":"Deutsch";$("outputTitle").textContent=$("targetLang").value==="it"?"Italienisch":"Deutsch"}
+function enforce(ch){if($("sourceLang").value===$("targetLang").value){if(ch==="s")$("targetLang").value=$("sourceLang").value==="it"?"de":"it";else $("sourceLang").value=$("targetLang").value==="it"?"de":"it"}updateTitles()}
+function filteredItems(items,query){const q=n(query||"");return items.map((x,i)=>({...x,_i:i})).filter(x=>!q||n(x.source).includes(q)||n(x.translation).includes(q))}
+function renderLists(){
+  const h=filteredItems(state.history,$("historySearch")?.value),f=filteredItems(state.favorites,$("favoritesSearch")?.value);
+  $("historyCount").textContent=`${state.history.length} ${state.history.length===1?"Eintrag":"Einträge"}`;
+  $("favoritesCount").textContent=`${state.favorites.length} ${state.favorites.length===1?"Eintrag":"Einträge"}`;
+  $("historyList").innerHTML=h.length?h.map(x=>`<div class="list-item"><div><strong>${esc(x.source)}</strong><small>${esc(x.translation)}</small></div><div class="item-actions"><button class="icon tiny use-history" data-i="${x._i}" title="Öffnen">↗</button><button class="icon tiny copy-item" data-type="history" data-i="${x._i}" title="Kopieren">▣</button><button class="icon tiny speak-item" data-type="history" data-i="${x._i}" title="Vorlesen">🔊</button></div></div>`).join(""):'<div class="meta">Keine passenden Übersetzungen.</div>';
+  $("favoritesList").innerHTML=f.length?f.map(x=>`<div class="list-item"><div><strong>${esc(x.source)}</strong><small>${esc(x.translation)}</small></div><div class="item-actions"><button class="icon tiny use-fav" data-i="${x._i}" title="Öffnen">↗</button><button class="icon tiny copy-item" data-type="favorites" data-i="${x._i}" title="Kopieren">▣</button><button class="icon tiny remove-fav" data-i="${x._i}" title="Entfernen">✕</button></div></div>`).join(""):'<div class="meta">Keine passenden Favoriten.</div>';
+  document.querySelectorAll(".use-history").forEach(b=>b.onclick=()=>openSaved(state.history[+b.dataset.i],"Verlauf"));
+  document.querySelectorAll(".use-fav").forEach(b=>b.onclick=()=>openSaved(state.favorites[+b.dataset.i],"Favorit"));
+  document.querySelectorAll(".remove-fav").forEach(b=>b.onclick=()=>{state.favorites.splice(+b.dataset.i,1);save();renderLists()});
+  document.querySelectorAll(".copy-item").forEach(b=>b.onclick=async()=>{const x=state[b.dataset.type][+b.dataset.i];try{await navigator.clipboard.writeText(`${x.source}\n\n${x.translation}`);toast("Eintrag kopiert.")}catch{toast("Kopieren wurde blockiert.")}});
+  document.querySelectorAll(".speak-item").forEach(b=>b.onclick=()=>{const x=state[b.dataset.type][+b.dataset.i];speak(x.translation,x.targetLang||$("targetLang").value)});
+}
+function openSaved(x,label){$("sourceText").value=x.source;$("sourceLang").value=x.sourceLang||"it";$("targetLang").value=x.targetLang||"de";setOutput(x.translation,label);updateTitles();count();showView("translator");window.scrollTo({top:0,behavior:"smooth"})}
+function renderTravel(){
+  $("categoryGrid").innerHTML=Object.entries(cats).map(([k,[i,l]])=>`<button class="category ${k===state.category?"active":""}" data-cat="${k}"><span>${i}</span><strong>${l}</strong></button>`).join("");
+  $("phraseGrid").innerHTML=travel[state.category].map(([de,it])=>`<div class="phrase"><strong>${esc(de)}</strong><small>${esc(it)}</small><div class="actions"><button class="btn green say" data-text="${esc(it)}">🔊 Italienisch</button><button class="btn open-phrase" data-de="${esc(de)}" data-it="${esc(it)}">Öffnen</button></div></div>`).join("");
+  document.querySelectorAll(".category").forEach(b=>b.onclick=()=>{state.category=b.dataset.cat;scheduleSave();renderTravel()});
+  document.querySelectorAll(".say").forEach(b=>b.onclick=()=>speak(b.dataset.text,"it"));
+  document.querySelectorAll(".open-phrase").forEach(b=>b.onclick=()=>{$("sourceLang").value="de";$("targetLang").value="it";$("sourceText").value=b.dataset.de;setOutput(b.dataset.it,"Reisemodus");showView("translator");updateTitles();count()})
+}
+function showView(v){document.querySelectorAll(".view,.nav").forEach(x=>x.classList.remove("active"));$(v+"View").classList.add("active");document.querySelectorAll(`.nav[data-view="${v}"]`).forEach(x=>x.classList.add("active"));state.activeView=v;scheduleSave()}
+function count(){$("count").textContent=`${$("sourceText").value.length} / 4000`}
+function connection(){const o=navigator.onLine;$("connection").textContent=o?"Internet verfügbar":"Offline";$("dot").style.background=o?"var(--green)":"var(--danger)"}
+
+function loadOcrModule(){
+  if(window.Tesseract)return Promise.resolve(window.Tesseract);
+  if(ocrLoader)return ocrLoader;
+  ocrLoader=new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    script.src="https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js";
+    script.onload=()=>resolve(window.Tesseract);script.onerror=()=>{ocrLoader=null;script.remove();reject(new Error("OCR load failed"))};
+    document.head.appendChild(script);
+  });
+  return ocrLoader;
+}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function resetOcrState(){Object.assign(ocrState,{rotation:0,deskew:0,perspective:0,cropLeft:0,cropRight:0,cropTop:0,cropBottom:0,contrast:130,brightness:105,gray:true,invert:false,sharpen:true});syncOcrControls();renderOcrPreview()}
+function syncOcrControls(){
+  const ids={cropLeft:"cropLeft",cropRight:"cropRight",cropTop:"cropTop",cropBottom:"cropBottom",contrast:"ocrContrast",brightness:"ocrBrightness",deskew:"ocrDeskew",perspective:"ocrPerspective"};
+  Object.entries(ids).forEach(([key,id])=>{if($(id))$(id).value=ocrState[key]});
+  $("ocrGray").checked=ocrState.gray;$("ocrInvert").checked=ocrState.invert;$("ocrSharpen").checked=ocrState.sharpen;
+  $("cropLeftValue").textContent=ocrState.cropLeft+" %";$("cropRightValue").textContent=ocrState.cropRight+" %";$("cropTopValue").textContent=ocrState.cropTop+" %";$("cropBottomValue").textContent=ocrState.cropBottom+" %";
+  $("contrastValue").textContent=ocrState.contrast+" %";$("brightnessValue").textContent=ocrState.brightness+" %";$("deskewValue").textContent=ocrState.deskew.toFixed(1).replace(".",",")+"°";$("perspectiveValue").textContent=ocrState.perspective+" %";
+}
+function applySharpen(imageData,w,h){
+  const src=new Uint8ClampedArray(imageData.data),dst=imageData.data,k=[0,-1,0,-1,5,-1,0,-1,0];
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++)for(let c=0;c<3;c++){
+    let sum=0,i=0;for(let ky=-1;ky<=1;ky++)for(let kx=-1;kx<=1;kx++){sum+=src[((y+ky)*w+(x+kx))*4+c]*k[i++]}dst[(y*w+x)*4+c]=clamp(sum,0,255);
+  }
+  return imageData;
+}
+function renderOcrPreview(){
+  if(!selectedImageBitmap)return;
+  const canvas=$("ocrCanvas"),ctx=canvas.getContext("2d",{willReadFrequently:true});
+  const iw=selectedImageBitmap.width,ih=selectedImageBitmap.height;
+  const sx=Math.round(iw*ocrState.cropLeft/100),sy=Math.round(ih*ocrState.cropTop/100);
+  const sw=Math.max(20,Math.round(iw*(1-(ocrState.cropLeft+ocrState.cropRight)/100)));
+  const sh=Math.max(20,Math.round(ih*(1-(ocrState.cropTop+ocrState.cropBottom)/100)));
+  const totalAngle=ocrState.rotation+ocrState.deskew,rad=totalAngle*Math.PI/180,maxSide=1800,scale=Math.min(1,maxSide/Math.max(sw,sh));
+  const dw=Math.max(1,Math.round(sw*scale)),dh=Math.max(1,Math.round(sh*scale));
+  const cw=Math.ceil(Math.abs(dw*Math.cos(rad))+Math.abs(dh*Math.sin(rad))),ch=Math.ceil(Math.abs(dw*Math.sin(rad))+Math.abs(dh*Math.cos(rad)));
+  const temp=document.createElement("canvas"),tctx=temp.getContext("2d");temp.width=dw;temp.height=dh;
+  tctx.filter=`brightness(${ocrState.brightness}%) contrast(${ocrState.contrast}%) ${ocrState.gray?'grayscale(100%)':''} ${ocrState.invert?'invert(100%)':''}`;
+  tctx.drawImage(selectedImageBitmap,sx,sy,sw,sh,0,0,dw,dh);tctx.filter="none";
+  const warped=document.createElement("canvas"),wctx=warped.getContext("2d");warped.width=dw;warped.height=dh;
+  const p=ocrState.perspective/100,topScale=1-Math.max(0,p),bottomScale=1+Math.min(0,p);
+  for(let y=0;y<dh;y++){const q=y/Math.max(1,dh-1),lineScale=topScale+(bottomScale-topScale)*q,lineW=dw*lineScale,x=(dw-lineW)/2;wctx.drawImage(temp,0,y,dw,1,x,y,lineW,1)}
+  canvas.width=cw;canvas.height=ch;ctx.save();ctx.translate(cw/2,ch/2);ctx.rotate(rad);ctx.drawImage(warped,-dw/2,-dh/2);ctx.restore();
+  if(ocrState.sharpen){let data=ctx.getImageData(0,0,canvas.width,canvas.height);ctx.putImageData(applySharpen(data,canvas.width,canvas.height),0,0)}
+  $("ocrStage").classList.add("show");
+}
+
+function deskewScore(source,angle){
+  const size=420,scale=Math.min(1,size/Math.max(source.width,source.height)),w=Math.max(40,Math.round(source.width*scale)),h=Math.max(40,Math.round(source.height*scale));
+  const c=document.createElement("canvas"),x=c.getContext("2d",{willReadFrequently:true});c.width=w;c.height=h;x.translate(w/2,h/2);x.rotate(angle*Math.PI/180);x.drawImage(source,-w/2,-h/2,w,h);
+  const d=x.getImageData(0,0,w,h).data,rows=new Float64Array(h);for(let yy=0;yy<h;yy++){let sum=0;for(let xx=0;xx<w;xx++){const i=(yy*w+xx)*4,g=(d[i]+d[i+1]+d[i+2])/3;if(g<180)sum++}rows[yy]=sum}
+  let score=0;for(let i=1;i<h;i++){const z=rows[i]-rows[i-1];score+=z*z}return score;
+}
+async function autoAlignImage(){
+  if(!selectedImageBitmap)return toast("Bitte zuerst ein Foto auswählen.");
+  $("ocrStatus").textContent="Ausrichtung wird geprüft …";await new Promise(r=>setTimeout(r,20));
+  let best=0,bestScore=-1;for(let a=-8;a<=8;a+=0.5){const sc=deskewScore(selectedImageBitmap,a);if(sc>bestScore){bestScore=sc;best=a}}
+  ocrState.deskew=Math.abs(best)<0.4?0:Number(best.toFixed(1));syncOcrControls();renderOcrPreview();$("ocrStatus").textContent=`Begradigt: ${ocrState.deskew.toFixed(1).replace(".",",")}°`;toast("Automatische Ausrichtung abgeschlossen.");
+}
+function processedOcrBlob(){return new Promise((resolve,reject)=>$("ocrCanvas").toBlob(b=>b?resolve(b):reject(new Error("Bild konnte nicht verarbeitet werden")),"image/png",1))}
+function cleanOcrText(text){return text.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").replace(/([A-Za-zÀ-ÿ])-\n([A-Za-zÀ-ÿ])/g,"$1$2").replace(/[ ]{2,}/g," ").trim()}
+function detectDocumentType(text){
+  const forced=$("ocrDocumentType").value;if(forced!=="auto")return forced;
+  const t=text.toLowerCase(),lines=text.split(/\n/).filter(x=>x.trim()),prices=(text.match(/\b\d{1,3}[,.]\d{2}\s*€?|€\s*\d/gi)||[]).length;
+  const menuWords=(t.match(/antipasti|primi|secondi|contorni|dolci|pizza|pasta|ingredienti|menu|bevande/g)||[]).length;
+  const receiptWords=(t.match(/totale|subtotale|iva|scontrino|cassa|resto|pagamento/g)||[]).length;
+  const productWords=(t.match(/ingredienti|peso netto|conservare|scadenza|nutrizionali|prodotto/g)||[]).length;
+  if(menuWords>=2||(prices>=3&&lines.length>=4))return "menu";
+  if(receiptWords>=2||(prices>=4&&/totale/i.test(t)))return "receipt";
+  if(productWords>=2)return "product";
+  if(lines.length<=3&&text.length<140)return "sign";
+  return "document";
+}
+function smartOcrCorrection(text,lang,type){
+  const mode=$("ocrCorrectionMode").value;if(mode==="off")return text;
+  let out=cleanOcrText(text).replace(/[|¦]/g,"I").replace(/\b([€$])\s+(\d)/g,"$1$2");
+  if(lang==="ita"){
+    out=out.replace(/\bl1\b/gi,"il").replace(/\bI1\b/g,"Il").replace(/\b0lio\b/gi,"olio").replace(/\bde11a\b/gi,"della").replace(/\bcon\s+1a\b/gi,"con la");
+    if(mode==="smart")out=out.replace(/\bmenu'\b/gi,"menù").replace(/\b caffe'\b/gi," caffè").replace(/\bpiu'\b/gi,"più");
+  } else {
+    out=out.replace(/\bda5\b/gi,"das").replace(/\bmit0\b/gi,"mit").replace(/\bStraBe\b/g,"Straße");
+  }
+  if(type==="menu")out=out.replace(/(\d{1,3})[.,](\d{2})(?!\s*€)/g,"$1,$2 €");
+  return out;
+}
+function imageQualityMetrics(){
+  const c=$("ocrCanvas"),ctx=c.getContext("2d",{willReadFrequently:true}),d=ctx.getImageData(0,0,c.width,c.height).data;let sum=0,sum2=0,dark=0,light=0,n=0;
+  const step=Math.max(4,Math.floor(d.length/120000/4)*4);for(let i=0;i<d.length;i+=step){const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];sum+=y;sum2+=y*y;n++;if(y<28)dark++;if(y>230)light++}
+  const avg=sum/n,sd=Math.sqrt(Math.max(0,sum2/n-avg*avg));return{avg,contrast:sd,dark:dark/n,light:light/n};
+}
+function typeLabel(type){return({menu:"Speisekarte",sign:"Schild / kurzer Text",receipt:"Kassenzettel / Rechnung",product:"Produktetikett",document:"Dokument"})[type]||"Dokument"}
+function renderMenuPreview(text){
+  const box=$("menuPreview"),lines=text.split(/\n/).map(x=>x.trim()).filter(Boolean),rows=[];
+  for(let i=0;i<lines.length;i++){const m=lines[i].match(/^(.*?)(?:\s+|\.{2,})(\d{1,3}[,.]\d{2}\s*€?)$/);if(m)rows.push({name:m[1].trim(),price:m[2],desc:""});else if(rows.length&&!rows.at(-1).desc&&!/^[A-ZÀ-Ý\s]{4,}$/.test(lines[i]))rows.at(-1).desc=lines[i]}
+  if(!rows.length){box.hidden=true;box.innerHTML="";return}box.hidden=false;box.innerHTML=rows.slice(0,20).map(r=>`<div class="menu-row"><strong>${esc(r.name)}</strong><b>${esc(r.price)}</b>${r.desc?`<small>${esc(r.desc)}</small>`:""}</div>`).join("")
+}
+function updateOcrAnalysis(text,confidence,type){
+  const words=(text.match(/[A-Za-zÀ-ÿ0-9]+/g)||[]),m=imageQualityMetrics(),issues=[];
+  if(m.avg<55)issues.push("zu dunkel");if(m.avg>210)issues.push("überbelichtet");if(m.contrast<35)issues.push("wenig Kontrast");if(confidence<55)issues.push("unsichere Erkennung");if(words.length<3)issues.push("sehr wenig Text");
+  $("ocrType").textContent=`Dokumenttyp: ${typeLabel(type)}`;$("ocrWordCount").textContent=`${words.length} Wörter`;
+  const quality=confidence>=80&&issues.length===0?"Sehr gut":confidence>=65&&issues.length<=1?"Gut":confidence>=45?"Mittel":"Schwach";
+  $("ocrImageQuality").textContent=`Bildqualität: ${quality}`;$("ocrIssueCount").textContent=issues.length?issues.join(", "):"Keine auffälligen Probleme";
+  $("ocrAdvice").classList.toggle("warn",issues.length>0);$("ocrAdvice").textContent=issues.length?`Empfehlung: ${m.avg<55?"heller fotografieren; ":""}${m.contrast<35?"Kontrast erhöhen; ":""}${confidence<55?"näher herangehen und ruhig halten; ":""}gegebenenfalls Zuschnitt anpassen.`:"Qualität ausreichend. Der Text kann übernommen und übersetzt werden.";
+  renderMenuPreview(type==="menu"?text:"");
+}
+async function runOcr(){
+  if(!selectedImageBitmap)return toast("Bitte zuerst ein Foto auswählen.");
+  if(!navigator.onLine&&!window.Tesseract)return toast("Für den ersten OCR-Start wird Internet benötigt.");
+  try{await loadOcrModule()}catch{return toast("OCR-Modul konnte nicht geladen werden.")}
+  $("runOcrBtn").disabled=true;$("ocrStatus").textContent="Bild wird vorbereitet …";$("ocrProgress").value=0;
+  try{
+    const blob=await processedOcrBlob(),selected=$("sourceLang").value,preferred=selected==="it"?"ita":selected==="de"?"deu":"ita+deu";
+    $("ocrLanguage").textContent=`Sprache: ${preferred==="ita"?"Italienisch":preferred==="deu"?"Deutsch":"Deutsch + Italienisch"}`;
+    const result=await Tesseract.recognize(blob,preferred,{logger:m=>{if(typeof m.progress==="number")$("ocrProgress").value=Math.round(m.progress*100);$("ocrStatus").textContent=m.status||"Verarbeitung …"}});
+    const raw=cleanOcrText(result.data.text||""),detected=selected==="auto"?detectLanguage(raw).lang:selected,type=detectDocumentType(raw),text=smartOcrCorrection(raw,detected,type),confidence=Math.round(result.data.confidence||0);
+    $("ocrText").value=text;$("ocrStatus").textContent=text?"Fertig":"Kein Text gefunden";$("ocrConfidence").textContent=`Erkennungsqualität: ${confidence} %`;updateOcrAnalysis(text,confidence,type);toast(text?`${typeLabel(type)} erkannt und nachbearbeitet.`:"Es wurde kein lesbarer Text gefunden.")
+  }catch(e){$("ocrStatus").textContent="Fehler";toast("OCR konnte nicht abgeschlossen werden.")}
+  finally{$("runOcrBtn").disabled=false}
+}
+
+async function shareTranslation(){
+  const source=$("sourceText").value.trim(),translation=state.last.trim();
+  if(!source&&!translation)return toast("Noch kein Text zum Teilen vorhanden.");
+  const text=[source,translation].filter(Boolean).join("\n\n");
+  if(navigator.share){try{await navigator.share({title:"ItaliaTranslate",text});return}catch(e){if(e.name==="AbortError")return}}
+  try{await navigator.clipboard.writeText(text);toast("Text wurde zum Teilen kopiert.")}catch{toast("Teilen wird hier nicht unterstützt.")}
+}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");state.mode=b.dataset.mode;scheduleSave()});
+document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>showView(b.dataset.view));
+$("sourceLang").onchange=()=>{if($("sourceLang").value!=="auto")enforce("s");updateDetection(true);scheduleSave()};$("targetLang").onchange=()=>{enforce("t");scheduleSave()};
+$("swapBtn").onclick=()=>{const currentSource=effectiveSourceLang();const currentTarget=$("targetLang").value;$("sourceLang").value=currentTarget;$("targetLang").value=currentSource;const old=$("sourceText").value,previous=state.last;$("sourceText").value=previous||"";if(old)setOutput(old,"Getauscht");else{$("outputText").textContent="Die Übersetzung erscheint hier.";$("outputText").classList.add("placeholder");state.last=""}updateTitles();count();scheduleSave()};
+$("sourceText").oninput=()=>{count();updateDetection(true);scheduleSave()};$("translateBtn").onclick=perform;
+$("clearBtn").onclick=()=>{$("sourceText").value="";$("outputText").textContent="Die Übersetzung erscheint hier.";$("outputText").classList.add("placeholder");state.last="";count();scheduleSave()};
+$("micBtn").onclick=()=>{const lang=$("sourceLang").value==="auto"?(detectLanguage($("sourceText").value).lang||"it"):$("sourceLang").value;recognize(lang,t=>{$("sourceText").value=t;count();updateDetection(true);autoGrow($("sourceText"));scheduleSave()})};
+$("speakBtn").onclick=()=>speak(state.last,$("targetLang").value);
+$("copyBtn").onclick=async()=>{if(!state.last)return toast("Keine Übersetzung vorhanden.");try{await navigator.clipboard.writeText(state.last);toast("Kopiert.")}catch{toast("Kopieren wurde blockiert.")}};
+$("shareBtn").onclick=shareTranslation;$("shareAppBtn").onclick=shareTranslation;
+$("favoriteBtn").onclick=()=>{const source=$("sourceText").value.trim();if(!source||!state.last)return toast("Bitte zuerst übersetzen.");if(state.favorites.some(x=>n(x.source)===n(source)&&n(x.translation)===n(state.last)))return toast("Dieser Favorit ist bereits gespeichert.");state.favorites.unshift({source,translation:state.last,sourceLang:sourceLang,targetLang:$("targetLang").value});state.favorites=state.favorites.slice(0,40);save();renderLists();toast("Favorit gespeichert.")};
+$("settingsBtn").onclick=()=>$("settings").classList.toggle("open");
+$("photoBtn").onclick=()=>$("ocrPanel").classList.toggle("open");
+$("photoInput").onchange=async e=>{selectedImage=e.target.files?.[0]||null;if(!selectedImage)return;try{if(selectedImageBitmap?.close)selectedImageBitmap.close();selectedImageBitmap=await createImageBitmap(selectedImage);resetOcrState();$("ocrStatus").textContent="Foto geladen";$("ocrText").value="";$("ocrConfidence").textContent="Erkennungsqualität: –";$("ocrType").textContent="Dokumenttyp: –";$("ocrWordCount").textContent="0 Wörter";$("ocrImageQuality").textContent="Bildqualität: –";$("ocrIssueCount").textContent="Noch nicht analysiert";$("ocrAdvice").classList.remove("warn");$("ocrAdvice").textContent="Nach der Erkennung erscheint hier eine Aufnahmeempfehlung.";$("menuPreview").hidden=true}catch{selectedImageBitmap=null;toast("Das Bild konnte nicht geöffnet werden.")}};
+["cropLeft","cropRight","cropTop","cropBottom","ocrContrast","ocrBrightness","ocrDeskew","ocrPerspective"].forEach(id=>$(id).oninput=()=>{const map={cropLeft:"cropLeft",cropRight:"cropRight",cropTop:"cropTop",cropBottom:"cropBottom",ocrContrast:"contrast",ocrBrightness:"brightness",ocrDeskew:"deskew",ocrPerspective:"perspective"};ocrState[map[id]]=Number($(id).value);syncOcrControls();renderOcrPreview()});
+["ocrGray","ocrInvert","ocrSharpen"].forEach(id=>$(id).onchange=()=>{const map={ocrGray:"gray",ocrInvert:"invert",ocrSharpen:"sharpen"};ocrState[map[id]]=$(id).checked;renderOcrPreview()});
+$("rotateLeftBtn").onclick=()=>{ocrState.rotation=(ocrState.rotation+270)%360;renderOcrPreview()};$("rotateRightBtn").onclick=()=>{ocrState.rotation=(ocrState.rotation+90)%360;renderOcrPreview()};$("autoAlignBtn").onclick=autoAlignImage;$("resetImageBtn").onclick=resetOcrState;
+$("runOcrBtn").onclick=runOcr;$("useOcrBtn").onclick=()=>{if(!$("ocrText").value.trim())return toast("Noch kein Text erkannt.");$("sourceText").value=$("ocrText").value.trim();count();scheduleSave();toast("Text übernommen.")};
+$("useAndTranslateBtn").onclick=async()=>{if(!$("ocrText").value.trim())return toast("Noch kein Text erkannt.");$("sourceText").value=$("ocrText").value.trim();count();scheduleSave();showView("translator");await perform()};
+function updateProviderUi(){
+  const p=$("provider").value;const hints={libre:"LibreTranslate: vollständige /translate-Adresse",mymemory:"Leer lassen für den öffentlichen MyMemory-Endpunkt",custom:"POST-JSON mit q, source, target und translatedText/translation als Antwort"};
+  $("endpointHint").textContent=hints[p]||hints.custom;$("endpoint").placeholder=p==="mymemory"?"Optional – Standard wird verwendet":"https://…/translate";
+}
+["endpoint","apiKey"].forEach(id=>$(id).oninput=()=>{state.settings[id]=$(id).value;save()});
+$("provider").onchange=()=>{state.settings.provider=$("provider").value;updateProviderUi();save()};
+$("requestTimeout").onchange=()=>{state.settings.requestTimeout=Number($("requestTimeout").value)||15;save()};
+$("testOnlineBtn").onclick=async()=>{const b=$("testOnlineBtn"),status=$("onlineStatus");b.disabled=true;status.textContent="Verbindung wird geprüft …";try{const r=await onlineTranslate("Guten Tag","de","it",{test:true});status.textContent=`Erfolgreich: ${r.text} · Anbieter ${r.provider}`;toast("Online-Verbindung funktioniert.")}catch(err){status.textContent=`Fehler: ${onlineErrorMessage(err)}`;toast("Online-Test fehlgeschlagen.")}finally{b.disabled=false}};
+$("localAiEnabled").onchange=()=>{state.settings.localAiEnabled=$("localAiEnabled").checked;save();refreshModelStatus()};
+$("localModelProfile").onchange=()=>{state.settings.localModelProfile=$("localModelProfile").value;save();refreshModelStatus()};
+["localAiDevice","localAiDtype"].forEach(id=>$(id).onchange=()=>{state.settings[id]=$(id).value;neuralPipelines.clear();save();refreshModelStatus()});
+$("modelManifestUrl").oninput=()=>{state.settings.modelManifestUrl=$("modelManifestUrl").value;save()};
+$("checkDeviceBtn").onclick=async()=>{await inspectLocalAi();toast("Geräteprüfung abgeschlossen.")};$("persistStorageBtn").onclick=requestPersistentStorage;$("runAiBenchmarkBtn").onclick=runAiBenchmark;
+$("downloadModelBtn").onclick=async()=>{const profile=$("localModelProfile").value,manifest=$("modelManifestUrl").value.trim();try{if(profile==="adapter"||manifest)await prepareLocalModel();else await prepareBuiltInModel()}catch(err){neuralStatus(`Fehler: ${err?.message||err}`);toast("KI-Modell konnte nicht geladen werden.")}};$("testLocalAiBtn").onclick=testBuiltInModel;$("cancelModelBtn").onclick=()=>{neuralRunToken++;modelDownloadController?.abort();neuralBusy=false;neuralStatus("Vorgang wurde abgebrochen.");$("cancelModelBtn").disabled=true;toast("KI-Vorgang abgebrochen.")};
+$("removeModelBtn").onclick=async()=>{if(!confirm("Lokal gespeicherte Modelldaten wirklich löschen?"))return;try{await modelDbClear();await refreshModelStatus();toast("Modelldaten gelöscht.")}catch{toast("Modelldaten konnten nicht gelöscht werden.")}};
+["mobileData","offlineFirst","saveHistory","autoSpeak","darkMode"].forEach(id=>$(id).onchange=()=>{state.settings[id]=$(id).checked;if(id==="darkMode")document.body.classList.toggle("dark",state.settings.darkMode);save()});
+$("exportBtn").onclick=()=>{const b=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="ItaliaTranslate-Daten.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$("importInput").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());mergeState(data);save();location.reload()}catch{toast("Import fehlgeschlagen oder Datei ungültig.")}};
+$("clearHistoryBtn").onclick=()=>{if(!state.history.length)return toast("Der Verlauf ist bereits leer.");if(confirm("Gesamten Übersetzungsverlauf löschen?")){state.history=[];save();renderLists();toast("Verlauf gelöscht.")}};
+$("resetBtn").onclick=()=>{if(confirm("Wirklich alle lokalen Daten, Einstellungen und Favoriten löschen?")){localStorage.removeItem(KEY);LEGACY_KEYS.forEach(k=>localStorage.removeItem(k));location.reload()}};
+document.querySelectorAll("[data-conv]").forEach(b=>b.onclick=()=>recognize(b.dataset.conv,t=>$(b.dataset.conv==="de"?"convDe":"convIt").value=t));
+$("deToIt").onclick=async()=>{const t=$("convDe").value.trim();if(!t)return toast("Deutschen Text eingeben.");const r=await translate(t,"de","it");$("convIt").value=r.text;speak(r.text,"it")};
+$("itToDe").onclick=async()=>{const t=$("convIt").value.trim();if(!t)return toast("Italienischen Text eingeben.");const r=await translate(t,"it","de");$("convDe").value=r.text;speak(r.text,"de")};
+$("convClear").onclick=()=>{$("convDe").value="";$("convIt").value=""};
+document.querySelectorAll(".quick-chip").forEach(b=>b.onclick=()=>{$("sourceText").value=b.dataset.quick;count();scheduleSave();$("sourceText").focus()});
+$("historySearch").oninput=renderLists;$("favoritesSearch").oninput=renderLists;
+$("clearHistoryQuick").onclick=()=>$("clearHistoryBtn").click();$("detectNowBtn").onclick=()=>updateDetection(true);$("runTestsBtn").onclick=runTranslationTests;
+function autoGrow(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,320)+"px"}
+[$("sourceText"),$("convDe"),$("convIt"),$("ocrText")].forEach(el=>{el.addEventListener("input",()=>autoGrow(el));autoGrow(el)});
+document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();perform()}if(e.key==="Escape"&&document.activeElement===$("sourceText")){$("clearBtn").click()}});
+window.addEventListener("scroll",()=>$("scrollTopBtn").classList.toggle("show",window.scrollY>450));$("scrollTopBtn").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
+window.addEventListener("online",connection);window.addEventListener("offline",connection);
+
+
+
+// v18: Plattformabstraktion für Web, PWA und Capacitor
+const nativeTelemetry={errors:[],metrics:[]};
+function runtimeKind(){
+  const cap=window.Capacitor;
+  if(cap?.isNativePlatform?.())return cap.getPlatform?.()||"native";
+  if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)return "pwa";
+  return "web";
+}
+function recordMetric(name,started,details={}){const duration=Math.max(0,performance.now()-started);nativeTelemetry.metrics.push({name,duration:Math.round(duration),at:new Date().toISOString(),...details});if(nativeTelemetry.metrics.length>100)nativeTelemetry.metrics.shift();updateNativeStats();return duration}
+function recordNativeError(error,context="app"){nativeTelemetry.errors.push({context,message:String(error?.message||error),stack:String(error?.stack||"").slice(0,1500),at:new Date().toISOString()});if(nativeTelemetry.errors.length>50)nativeTelemetry.errors.shift();updateNativeStats()}
+window.addEventListener("error",e=>recordNativeError(e.error||e.message,"window"));
+window.addEventListener("unhandledrejection",e=>recordNativeError(e.reason,"promise"));
+const ItaliaPlatform={
+  kind:runtimeKind,
+  async camera(){
+    const camera=window.Capacitor?.Plugins?.Camera;
+    if(camera){const photo=await camera.getPhoto({quality:90,resultType:"uri",source:"CAMERA"});return photo.webPath||photo.path}
+    $("photoInput").click();return null
+  },
+  async share(data){
+    const share=window.Capacitor?.Plugins?.Share;
+    if(share)return share.share(data);
+    if(navigator.share)return navigator.share(data);
+    await navigator.clipboard.writeText([data.title,data.text,data.url].filter(Boolean).join("\n"));toast("In die Zwischenablage kopiert.")
+  },
+  async writeFile(name,text){
+    const fs=window.Capacitor?.Plugins?.Filesystem;
+    if(fs)return fs.writeFile({path:name,data:btoa(unescape(encodeURIComponent(text))),directory:"DOCUMENTS"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+  },
+  async deviceInfo(){
+    const dev=window.Capacitor?.Plugins?.Device;
+    const native=dev?await dev.getInfo():{};
+    const estimate=await navigator.storage?.estimate?.().catch(()=>null);
+    return {runtime:runtimeKind(),platform:native.platform||navigator.platform||"unbekannt",model:native.model||"Browser",osVersion:native.osVersion||"–",memoryGB:navigator.deviceMemory||null,cpu:navigator.hardwareConcurrency||null,webgpu:!!navigator.gpu,online:navigator.onLine,storageUsed:estimate?.usage||0,storageQuota:estimate?.quota||0,userAgent:navigator.userAgent}
+  },
+  modelDownloads:{
+    jobs:new Map(),
+    create(id,meta={}){const job={id,status:"queued",progress:0,createdAt:new Date().toISOString(),...meta};this.jobs.set(id,job);return job},
+    update(id,patch){const job=this.jobs.get(id);if(!job)return null;Object.assign(job,patch);return job},
+    cancel(id){const job=this.jobs.get(id);if(job)job.status="cancelled";modelDownloadController?.abort();neuralRunToken++;return job}
+  }
+};
+window.ItaliaTranslatePlatform=ItaliaPlatform;
+function formatNativeBytes(v){return typeof formatBytes==="function"?formatBytes(v||0):`${Math.round((v||0)/1048576)} MB`}
+function updateNativeStats(){const el=$("nativeStats");if(!el)return;el.innerHTML=`<div class="test-stat"><strong>${nativeTelemetry.errors.length}</strong><span>Fehler</span></div><div class="test-stat"><strong>${nativeTelemetry.metrics.length}</strong><span>Messungen</span></div><div class="test-stat"><strong>${runtimeKind().toUpperCase()}</strong><span>Laufzeit</span></div>`}
+async function runNativeDiagnostics(){const started=performance.now();try{const d=await ItaliaPlatform.deviceInfo();$("platformBadge").textContent=d.runtime.toUpperCase();$("nativeReport").textContent=`${d.platform} · ${d.model} · CPU ${d.cpu||"?"} · RAM ${d.memoryGB||"?"} GB · WebGPU ${d.webgpu?"ja":"nein"} · Speicher ${formatNativeBytes(d.storageUsed)} / ${formatNativeBytes(d.storageQuota)} · ${d.online?"online":"offline"}`;recordMetric("native-diagnostics",started,{runtime:d.runtime});toast("Native Diagnose abgeschlossen.")}catch(e){recordNativeError(e,"diagnostics");toast("Diagnose fehlgeschlagen.")}}
+async function exportNativeDiagnostics(){const payload={app:"ItaliaTranslate",version:18,createdAt:new Date().toISOString(),device:await ItaliaPlatform.deviceInfo(),telemetry:nativeTelemetry};await ItaliaPlatform.writeFile("ItaliaTranslate-Diagnose.json",JSON.stringify(payload,null,2));toast("Diagnose exportiert.")}
+
+// PWA-Installation und Updateverwaltung
+let deferredInstallPrompt=null;
+const installButton=$("installAppBtn");
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+  installButton.hidden=false;
+});
+installButton.onclick=async()=>{
+  if(!deferredInstallPrompt){toast("Installation über das Browsermenü auswählen.");return}
+  deferredInstallPrompt.prompt();
+  const result=await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt=null;
+  installButton.hidden=true;
+  toast(result.outcome==="accepted"?"Installation gestartet.":"Installation abgebrochen.");
+};
+window.addEventListener("appinstalled",()=>{installButton.hidden=true;deferredInstallPrompt=null;toast("ItaliaTranslate wurde installiert.")});
+if("serviceWorker" in navigator && location.protocol!=="file:"){
+  window.addEventListener("load",async()=>{
+    try{
+      const registration=await navigator.serviceWorker.register("./service-worker.js");
+      registration.addEventListener("updatefound",()=>{
+        const worker=registration.installing;
+        if(!worker)return;
+        worker.addEventListener("statechange",()=>{
+          if(worker.state==="installed"&&navigator.serviceWorker.controller){toast("Neue App-Version verfügbar. Beim nächsten Start wird sie verwendet.")}
+        });
+      });
+    }catch(error){console.warn("Service Worker konnte nicht registriert werden:",error)}
+  });
+}
+
+
+$("runNativeDiagnosticsBtn").onclick=runNativeDiagnostics;$("exportDiagnosticsBtn").onclick=exportNativeDiagnostics;$("clearDiagnosticsBtn").onclick=()=>{nativeTelemetry.errors=[];nativeTelemetry.metrics=[];updateNativeStats();$("nativeReport").textContent="Diagnoseprotokoll wurde geleert.";toast("Diagnoseprotokoll gelöscht.")};
+updateNativeStats();runNativeDiagnostics();
+load();refreshModelStatus();document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.mode===state.mode));connection();updateTitles();count();updateDetection(true);renderLists();renderTravel();showView(["translator","travel","conversation"].includes(state.activeView)?state.activeView:"translator");window.addEventListener("beforeunload",save);
+</script>
+</body>
+</html>
