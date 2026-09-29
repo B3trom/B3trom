@@ -121,13 +121,20 @@ class Tile(tk.Canvas):
         self.value, self.value_color = value, value_color
         self.state_ = "normal"
         self.enabled = True
-        self.bind("<Configure>", lambda e: self.draw())
+        self._size = (0, 0)
+        self.bind("<Configure>", self._on_configure)
         if command:
             self.configure(cursor="hand2")
             self.bind("<Enter>", lambda e: self._set("hover"))
             self.bind("<Leave>", lambda e: self._set("normal"))
             self.bind("<ButtonPress-1>", lambda e: self._set("pressed"))
             self.bind("<ButtonRelease-1>", self._release)
+
+    def _on_configure(self, e):
+        # <Configure> kommt auch beim bloßen Verschieben – nur bei neuer Größe neu zeichnen
+        if (e.width, e.height) != self._size:
+            self._size = (e.width, e.height)
+            self.draw()
 
     def _set(self, state: str):
         if self.enabled:
@@ -377,8 +384,10 @@ class App:
         # Hauptbereich
         main = tk.Frame(self.root, bg=t.bg, padx=18, pady=8)
         main.pack(fill="both", expand=True)
-        main.columnconfigure(0, weight=5, uniform="m")
-        main.columnconfigure(1, weight=4, uniform="m")
+        # Nur die Dateiliste wächst mit; die Prüfliste hat eine feste Breite und muss beim
+        # Ziehen am Fensterrand nicht ständig neu umbrechen.
+        main.columnconfigure(0, weight=1)
+        main.columnconfigure(1, weight=0, minsize=560)
         main.rowconfigure(0, weight=1)
 
         left = tk.Frame(main, bg=t.bg)
@@ -386,7 +395,8 @@ class App:
         self._build_filelist(left)
         self._build_settings(left)
 
-        right = tk.Frame(main, bg=t.bg)
+        right = tk.Frame(main, bg=t.bg, width=560)
+        right.pack_propagate(False)  # feste Breite, Inhalt bestimmt sie nicht
         right.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
         self._build_checklist(right)
 
@@ -552,10 +562,10 @@ class App:
         self.cl_canvas.pack(side="left", fill="both", expand=True)
         self.cl_frame = tk.Frame(self.cl_canvas, bg=t.surface, padx=14, pady=12)
         self.cl_window = self.cl_canvas.create_window(0, 0, window=self.cl_frame, anchor="nw")
-        self.cl_frame.bind("<Configure>",
-                           lambda e: self.cl_canvas.configure(scrollregion=self.cl_canvas.bbox("all")))
+        self.cl_frame.bind("<Configure>", lambda e: self._debounce("scroll", 60, self._update_scrollregion))
         self.cl_canvas.bind("<Configure>", self._on_checklist_resize)
         self.wrap_labels: list[tk.Label] = []
+        self._wrap_width = 0
 
         def wheel(e):
             delta = -1 if (getattr(e, "delta", 0) > 0 or getattr(e, "num", 0) == 4) else 1
@@ -569,11 +579,32 @@ class App:
                                          self.root.unbind_all("<Button-4>"),
                                          self.root.unbind_all("<Button-5>")))
 
+    # Beim Ziehen am Fensterrand kommen sehr viele <Configure>-Ereignisse. Der Zeilenumbruch
+    # aller Texte in der Prüfliste ist teuer, daher erst neu berechnen, wenn die Größe steht.
+    def _debounce(self, name: str, delay_ms: int, func):
+        jobs = self.__dict__.setdefault("_jobs", {})
+        if jobs.get(name):
+            self.root.after_cancel(jobs[name])
+        jobs[name] = self.root.after(delay_ms, lambda: (jobs.pop(name, None), func()))
+
+    def _update_scrollregion(self):
+        if self.cl_canvas.winfo_exists():
+            self.cl_canvas.configure(scrollregion=self.cl_canvas.bbox("all"))
+
     def _on_checklist_resize(self, e):
-        self.cl_canvas.itemconfigure(self.cl_window, width=e.width)
+        self._debounce("resize", 120, lambda w=e.width: self._apply_width(w))
+
+    def _apply_width(self, width: int):
+        if not self.cl_canvas.winfo_exists():
+            return
+        self.cl_canvas.itemconfigure(self.cl_window, width=width)
+        wrap = max(200, width - 110)
+        if wrap == self._wrap_width:
+            return
+        self._wrap_width = wrap
         for lbl in self.wrap_labels:
             if lbl.winfo_exists():
-                lbl.configure(wraplength=max(200, e.width - 110))
+                lbl.configure(wraplength=wrap)
 
     def _enable_drop(self):
         try:
@@ -780,7 +811,8 @@ class App:
         self.cl_canvas.yview_moveto(0)
 
     def _wrap(self, lbl: tk.Label) -> tk.Label:
-        lbl.configure(wraplength=max(200, self.cl_canvas.winfo_width() - 110), justify="left")
+        lbl.configure(wraplength=self._wrap_width or max(200, self.cl_canvas.winfo_width() - 110),
+                      justify="left")
         self.wrap_labels.append(lbl)
         return lbl
 
