@@ -13,6 +13,11 @@ from .checks import CHECK_TITLES, FileResult, Settings, Status
 CHECK_ORDER = list(CHECK_TITLES)
 
 
+def used_checks(results: list[FileResult]) -> list[str]:
+    """Nur Kriterien, die bei mindestens einer Datei geprüft wurden (abgewählte fallen weg)."""
+    return [k for k in CHECK_ORDER if k == "datei" or any(r.check(k) for r in results)]
+
+
 def display_names(results: list[FileResult]) -> dict:
     """Pfad relativ zum gemeinsamen Ordner (bei Projekten inkl. Unterordner)."""
     if not results:
@@ -43,10 +48,11 @@ def text_report(results: list[FileResult]) -> str:
 def write_csv(results: list[FileResult], path: str | Path) -> None:
     with open(path, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh, delimiter=";")
-        w.writerow(["Datei", "Gesamt"] + [CHECK_TITLES[k] for k in CHECK_ORDER]
-                   + [CHECK_TITLES[k] + " – Meldung" for k in CHECK_ORDER])
+        keys = used_checks(results)
+        w.writerow(["Datei", "Gesamt"] + [CHECK_TITLES[k] for k in keys]
+                   + [CHECK_TITLES[k] + " – Meldung" for k in keys])
         for r in results:
-            checks = [r.check(k) for k in CHECK_ORDER]
+            checks = [r.check(k) for k in keys]
             w.writerow(
                 [str(r.path), r.status.label]
                 + [c.status.label if c else "" for c in checks]
@@ -70,18 +76,20 @@ ul{margin:4px 0 0 18px;padding:0;color:#555} li{margin:1px 0}
 def write_html(results: list[FileResult], path: str | Path, settings: Settings) -> None:
     e = html.escape
     names = display_names(results)
+    keys = used_checks(results)
     rows = []
     for r in results:
         cells = "".join(
             f'<td class="st s{int(c.status)}" title="{e(c.message)}">{c.status.symbol}</td>'
             if (c := r.check(k)) else "<td></td>"
-            for k in CHECK_ORDER
+            for k in keys
         )
         rows.append(
             f'<tr><td class="file">{e(names[r.path])}</td>'
             f'<td class="st s{int(r.status)}">{r.status.symbol} {e(r.status.label)}</td>{cells}</tr>'
         )
-    head = "".join(f"<th>{e(CHECK_TITLES[k])}</th>" for k in CHECK_ORDER)
+    head = "".join(f"<th>{e(CHECK_TITLES[k])}</th>" for k in keys)
+    skipped = [CHECK_TITLES[k] for k in CHECK_ORDER if k not in settings.enabled and k != "datei"]
 
     sections = []
     for r in results:
@@ -103,7 +111,7 @@ def write_html(results: list[FileResult], path: str | Path, settings: Settings) 
 <style>{_CSS}</style></head><body>
 <h1>EPS-Prüfbericht</h1>
 <div class="meta">Erstellt {datetime.now():%d.%m.%Y %H:%M} · Auflösung {settings.min_dpi:g}–{settings.max_dpi:g} dpi ·
-{len(results)} Datei(en)</div>
+{len(results)} Datei(en){(" · nicht geprüft: " + e(", ".join(skipped))) if skipped else ""}</div>
 <table><tr><th>Datei</th><th>Gesamt</th>{head}</tr>{''.join(rows)}</table>
 {''.join(sections)}
 </body></html>"""

@@ -105,7 +105,14 @@ class PruefungTest(unittest.TestCase):
     def test_nicht_eingebettete_schrift(self):
         r = self.result("rgb_schwarz.eps")
         self.assertIn("Helvetica", r.analysis.missing_fonts)
-        self.assertEqual(self.result("ok.eps").analysis.missing_fonts, [])
+        self.assertEqual(r.check("schriften").status, Status.FAIL)
+        self.assertEqual(self.status("ok.eps", "schriften"), Status.OK)
+
+    def test_kriterien_abwaehlen(self):
+        s = Settings(gs_executable=GS, enabled=frozenset({"aufloesung"}))
+        r = check_file(self.dir / "rgb_schwarz.eps", s)
+        self.assertEqual([c.key for c in r.checks], ["datei", "aufloesung"])
+        self.assertEqual(r.status, Status.OK)  # RGB-Schwarz und Schrift wurden nicht geprüft
 
     def test_dos_eps(self):
         r = self.result("dos_header.eps")

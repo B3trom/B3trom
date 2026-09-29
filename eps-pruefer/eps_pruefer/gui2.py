@@ -19,7 +19,7 @@ from tkinter import filedialog, messagebox, ttk
 from tkinter import font as tkfont
 
 from . import __version__
-from .checks import CHECK_TITLES, CheckResult, FileResult, Settings, Status, check_file
+from .checks import CHECK_TITLES, OPTIONAL_CHECKS, CheckResult, FileResult, Settings, Status, check_file
 from .cli import folder_files
 from .ghostscript import find_ghostscript, ghostscript_version
 from .gui import EPS_TYPES, load_config, save_config
@@ -228,6 +228,33 @@ class Badge(tk.Canvas):
                          font=(FONT, int(s * 0.42), "bold"))
 
 
+class Switch(tk.Canvas):
+    """Ein/Aus-Schalter mit Schiebeknopf."""
+
+    def __init__(self, master, theme: Theme, var: tk.BooleanVar, command=None, bg: str | None = None):
+        super().__init__(master, width=46, height=26, highlightthickness=0, bd=0, bg=bg or theme.surface,
+                         cursor="hand2")
+        self.t, self.var, self.command = theme, var, command
+        self.bind("<Button-1>", self._toggle)
+        self.draw()
+
+    def _toggle(self, _e=None):
+        self.var.set(not self.var.get())
+        self.draw()
+        if self.command:
+            self.command()
+
+    def draw(self):
+        t, on = self.t, self.var.get()
+        self.delete("all")
+        track = t.accent if on else mix(t.surface2, t.border, 0.7)
+        round_rect(self, 2, 4, 44, 24, 10, fill=mix(track, "#000000", 0.15), outline="")
+        round_rect(self, 2, 3, 44, 23, 10, fill=track, outline="")
+        x = 33 if on else 13
+        self.create_oval(x - 9, 5, x + 9, 23, fill=mix("#000000", track, 0.6), outline="")
+        self.create_oval(x - 9, 4, x + 9, 22, fill="#ffffff", outline="")
+
+
 def card(parent, t: Theme, stripe: str | None = None, pad=(14, 10)):
     """Karte mit Kante unten (Schatten) und optionalem farbigem Streifen links."""
     outer = tk.Frame(parent, bg=mix(t.bg, t.shadow, 0.45 if t.name == "dark" else 0.22))
@@ -245,7 +272,8 @@ def card(parent, t: Theme, stripe: str | None = None, pad=(14, 10)):
 # ---------------------------------------------------------------------------
 
 CHECK_DESCRIPTIONS = {
-    "datei": "EPS lesbar, PostScript fehlerfrei, Schriften eingebettet",
+    "datei": "EPS lesbar und PostScript fehlerfrei (wird immer geprüft)",
+    "schriften": "Alle verwendeten Schriften sind in der EPS eingebettet",
     "schwarz": "Schwarz ist CMYK-Schwarz, nicht RGB",
     "eingebettet": "Alle Pixeldaten sind eingebettet, keine Verknüpfungen",
     "aufloesung": "Bilder liegen zwischen {min} und {max} dpi",
@@ -275,6 +303,8 @@ class App:
         self.var_rgb = tk.BooleanVar(value=self.cfg.get("rgb_is_error", False))
         self.var_gray = tk.BooleanVar(value=self.cfg.get("gray_black_is_error", False))
         self.var_recursive = tk.BooleanVar(value=self.cfg.get("recursive", True))
+        enabled = set(self.cfg.get("enabled", OPTIONAL_CHECKS))
+        self.var_checks = {k: tk.BooleanVar(value=k in enabled) for k in OPTIONAL_CHECKS}
         self.gs_path = find_ghostscript(self.cfg.get("gs_executable"))
         self.gs_version = ghostscript_version(self.gs_path) if self.gs_path else ""
         self.status_text = "Einzelne Dateien oder einen Ordner hinzufügen, dann „Alle prüfen“."
@@ -371,6 +401,7 @@ class App:
 
         self.populate_tree()
         self._update_stats()
+        self._update_active_label()
         busy = self._busy()
         self._set_running(busy)
         if busy:
@@ -505,7 +536,13 @@ class App:
 
     def _build_checklist(self, parent):
         t = self.t
-        self._section_title(parent, "Prüfliste")
+        row = self._section_title(parent, "Prüfliste", "Kriterien per Schalter wählen")
+        for text, value in (("Alle aus", False), ("Alle an", True)):
+            link = tk.Label(row, text=text, font=(FONT, 9, "underline"), bg=t.bg, fg=t.accent, cursor="hand2")
+            link.pack(side="right", padx=(12, 0))
+            link.bind("<Button-1>", lambda e, v=value: self._set_all_checks(v))
+        self.lbl_active = tk.Label(row, font=(FONT, 9, "bold"), bg=t.bg, fg=t.muted)
+        self.lbl_active.pack(side="right", padx=(12, 0))
         outer, inner = card(parent, t, pad=(0, 0))
         outer.pack(fill="both", expand=True)
         self.cl_canvas = tk.Canvas(inner, bg=t.surface, highlightthickness=0, bd=0)
@@ -765,24 +802,33 @@ class App:
                      anchor="w").pack(fill="x", pady=(4, 0))
 
     def _check_card(self, number: int, title: str, message: str, status: Status | None,
-                    details: list[str], max_details: int = 6):
+                    details: list[str], max_details: int = 6, key: str = ""):
         t = self.t
+        active = key not in self.var_checks or self.var_checks[key].get()
         stripe = status_color(t, status) if status is not None else t.border
-        outer, inner = card(self.cl_frame, t, stripe=stripe, pad=(12, 9))
+        outer, inner = card(self.cl_frame, t, stripe=stripe if active else t.surface2, pad=(12, 9))
         outer.pack(fill="x", pady=(0, 8))
-        Badge(inner, t, status, t.surface).pack(side="left", anchor="n", padx=(0, 12))
+        Badge(inner, t, status if active else None, t.surface).pack(side="left", anchor="n", padx=(0, 12))
         col = tk.Frame(inner, bg=t.surface)
         col.pack(side="left", fill="x", expand=True)
         head = tk.Frame(col, bg=t.surface)
         head.pack(fill="x")
         tk.Label(head, text=f"{number:02d}", font=(FONT, 9, "bold"), bg=t.surface,
                  fg=t.muted).pack(side="left", padx=(0, 8))
-        tk.Label(head, text=title, font=(FONT, 11, "bold"), bg=t.surface, fg=t.text).pack(side="left")
-        if status is not None:
+        tk.Label(head, text=title, font=(FONT, 11, "bold"), bg=t.surface,
+                 fg=t.text if active else t.muted).pack(side="left")
+        if key in self.var_checks:
+            Switch(head, t, self.var_checks[key], command=self._on_toggle).pack(side="right")
+        elif key == "datei":
+            tk.Label(head, text="IMMER", font=(FONT, 8, "bold"), bg=t.surface2, fg=t.muted,
+                     padx=8, pady=1).pack(side="right")
+        if status is not None and active:
             tk.Label(head, text=status.label.upper(), font=(FONT, 8, "bold"),
-                     bg=mix(t.surface, stripe, 0.16), fg=stripe, padx=8, pady=1).pack(side="right")
-        self._wrap(tk.Label(col, text=message, font=(FONT, 10), bg=t.surface, fg=t.text,
-                            anchor="w")).pack(fill="x", pady=(3, 0))
+                     bg=mix(t.surface, stripe, 0.16), fg=stripe, padx=8, pady=1).pack(side="right", padx=(0, 8))
+        if not active:
+            message, details = "Abgewählt – wird nicht geprüft", []
+        self._wrap(tk.Label(col, text=message, font=(FONT, 10), bg=t.surface,
+                            fg=t.text if active else t.muted, anchor="w")).pack(fill="x", pady=(3, 0))
         if details:
             box = tk.Frame(col, bg=t.surface)
             box.pack(fill="x", pady=(4, 0))
@@ -822,8 +868,15 @@ class App:
             self._header("Prüfkriterien", "Datei oder Projekt in der Liste wählen, um das Ergebnis zu sehen.",
                          None)
         for i, key in enumerate(CHECK_ORDER, 1):
-            desc = CHECK_DESCRIPTIONS[key].format(min=f"{s.min_dpi:g}", max=f"{s.max_dpi:g}")
-            self._check_card(i, CHECK_TITLES[key], desc, None, [])
+            self._check_card(i, CHECK_TITLES[key], self._describe(key, s), None, [], key=key)
+
+    def _describe(self, key: str, s: Settings) -> str:
+        return CHECK_DESCRIPTIONS[key].format(min=f"{s.min_dpi:g}", max=f"{s.max_dpi:g}")
+
+    def _missing_text(self, key: str, analysed: bool) -> str:
+        if analysed:
+            return "Bei der letzten Prüfung abgewählt – für ein Ergebnis erneut prüfen"
+        return "Nicht geprüft (Datei nicht auswertbar)"
 
     def _checklist_file(self, res: FileResult):
         n_fail = sum(1 for c in res.checks if c.status == Status.FAIL)
@@ -835,9 +888,10 @@ class App:
         for i, key in enumerate(CHECK_ORDER, 1):
             c = by_key.get(key)
             if c:
-                self._check_card(i, c.title, c.message, c.status, c.details)
+                self._check_card(i, c.title, c.message, c.status, c.details, key=key)
             else:
-                self._check_card(i, CHECK_TITLES[key], "Nicht geprüft (Datei nicht auswertbar)", None, [])
+                self._check_card(i, CHECK_TITLES[key], self._missing_text(key, res.analysis is not None),
+                                 None, [], key=key)
 
     def _checklist_group(self, folder: Path):
         files = self.groups.get(folder, [])
@@ -852,8 +906,8 @@ class App:
         for i, key in enumerate(CHECK_ORDER, 1):
             checks = [(r, c) for r in done if (c := r.check(key))]
             if not checks:
-                desc = CHECK_DESCRIPTIONS[key].format(min=f"{s.min_dpi:g}", max=f"{s.max_dpi:g}")
-                self._check_card(i, CHECK_TITLES[key], desc, None, [])
+                msg = self._missing_text(key, True) if done else self._describe(key, s)
+                self._check_card(i, CHECK_TITLES[key], msg, None, [], key=key)
                 continue
             n_fail = sum(1 for _, c in checks if c.status == Status.FAIL)
             n_warn = sum(1 for _, c in checks if c.status == Status.WARN)
@@ -863,7 +917,7 @@ class App:
             msg = ", ".join(parts) if parts else f"Alle {len(checks)} Dateien in Ordnung"
             details = [f"{STATUS_GLYPH[c.status]}  {r.path.relative_to(folder)} – {c.message}"
                        for r, c in sorted(checks, key=lambda rc: -rc[1].status) if c.status >= Status.WARN]
-            self._check_card(i, checks[0][1].title, msg, top, details)
+            self._check_card(i, checks[0][1].title, msg, top, details, key=key)
 
     # ------------------------------------------------------------------ Prüfen
     def _busy(self) -> bool:
@@ -878,7 +932,24 @@ class App:
 
         return Settings(min_dpi=num(self.var_min, 80.0), max_dpi=num(self.var_max, 150.0),
                         rgb_is_error=self.var_rgb.get(), gray_black_is_error=self.var_gray.get(),
-                        gs_executable=self.gs_path or "")
+                        gs_executable=self.gs_path or "",
+                        enabled=frozenset(k for k, v in self.var_checks.items() if v.get()))
+
+    def _on_toggle(self):
+        self.cfg["enabled"] = [k for k, v in self.var_checks.items() if v.get()]
+        self._update_active_label()
+        self.show_checklist()
+
+    def _set_all_checks(self, value: bool):
+        for v in self.var_checks.values():
+            v.set(value)
+        self._on_toggle()
+
+    def _update_active_label(self):
+        if hasattr(self, "lbl_active") and self.lbl_active.winfo_exists():
+            n = sum(1 for v in self.var_checks.values() if v.get())
+            self.lbl_active.configure(text=f"{n} von {len(self.var_checks)} aktiv",
+                                      fg=self.t.muted if n else self.t.fail)
 
     def start_check(self, selection_only: bool = False):
         if self._busy():
@@ -1031,13 +1102,15 @@ class App:
         s = self._settings()
         messagebox.showinfo(
             f"{APP_TITLE} {__version__}",
-            "Prüfliste:\n"
-            "01  Datei / PostScript – lesbar, fehlerfrei, Schriften eingebettet\n"
+            "Prüfliste (per Schalter wählbar, 01 wird immer geprüft):\n"
+            "01  Datei / PostScript – lesbar und fehlerfrei\n"
             "02  Schwarz in CMYK – Schwarz darf nicht RGB sein\n"
             "03  Pixeldaten eingebettet – keine OPI-/DCS-/Datei-Verknüpfungen\n"
-            f"04  Auflösung – alle Bilder zwischen {s.min_dpi:g} und {s.max_dpi:g} dpi\n"
-            "05  Kein Überdrucken\n"
-            "06  Hintergrundfläche – unterstes Objekt ist eine deckende Farbfläche (Warnung, wenn sie fehlt oder transparent ist)\n\n"
+            "04  Schriften eingebettet – keine fehlenden Schriften\n"
+            f"05  Auflösung – alle Bilder zwischen {s.min_dpi:g} und {s.max_dpi:g} dpi\n"
+            "06  Kein Überdrucken\n"
+            "07  Hintergrundfläche – unterstes Objekt ist eine deckende Farbfläche "
+            "(Warnung, wenn sie fehlt oder transparent ist)\n\n"
             "Bedienung:\n"
             "• „Einzelne Dateien“ oder „Ordner / Projekt“ hinzufügen\n"
             "• „Alle prüfen“ oder nur die markierten Einträge mit „Auswahl prüfen“\n"
@@ -1050,7 +1123,8 @@ class App:
         s = self._settings()
         self.cfg.update(min_dpi=s.min_dpi, max_dpi=s.max_dpi, rgb_is_error=s.rgb_is_error,
                         gray_black_is_error=s.gray_black_is_error, recursive=self.var_recursive.get(),
-                        theme=self.t.name, geometry_v2=self.root.geometry())
+                        theme=self.t.name, geometry_v2=self.root.geometry(),
+                        enabled=sorted(s.enabled, key=OPTIONAL_CHECKS.index))
         if self.gs_path:
             self.cfg["gs_executable"] = self.gs_path
         save_config(self.cfg)

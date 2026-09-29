@@ -9,13 +9,19 @@ im Dateikopf aus.
 |---|---|
 | **Schwarz in CMYK** | ein schwarzer Wert als RGB angelegt ist (R, G und B ≤ 20 %), in Flächen, Konturen, Texten, Mustern, Verläufen oder Strichbildern |
 | **Pixeldaten eingebettet** | die Datei Bilder nur verknüpft (OPI `%%ImageFileName`/`%ALDImageFileName`, DCS-Farbauszugsdateien, `%%IncludeFile`, `%%DocumentNeededFiles` …) |
+| **Schriften eingebettet** | eine verwendete Schrift nicht in der EPS enthalten ist (sie würde beim Ausgeben ersetzt) |
 | **Auflösung 80–150 dpi** | ein Bild eine effektive Auflösung unter 80 oder über 150 dpi hat (Pixel ÷ platzierte Größe, Skalierung und Drehung sind berücksichtigt; beide Grenzwerte einstellbar) |
 | **Kein Überdrucken** | irgendein Objekt beim Malen auf Überdrucken steht (`setoverprint true`) |
 | **Hintergrundfläche** | *nur Warnung:* das unterste gemalte Objekt ist keine Farbfläche (z. B. Bild, Text, Kontur oder gar nichts), oder die Fläche hat Transparenz. Die Fläche muss **nicht** die ganze Anzeige füllen, ihre Abdeckung wird nur als Info angezeigt |
 
+**Alle Kriterien sind vorab wählbar.** Nur „Datei / PostScript“ (lesbar,
+fehlerfrei) wird immer geprüft. In der v2 schaltet man die Kriterien direkt in der
+Prüfliste per Schalter ein und aus („Alle an“ / „Alle aus“), in der klassischen
+Oberfläche über Häkchen. Die Auswahl wird gespeichert. Abgewählte Kriterien
+erscheinen ausgegraut und fehlen im Bericht.
+
 Zusätzlich gibt es **Warnungen** für andere RGB-Farben, RGB-Bilder, Schwarz als
-Graustufe (statt CMYK), nicht eingebettete Schriften, PostScript-Fehler und fehlende
-BoundingBox. In den Einstellungen kann man RGB-Farben und Graustufen-Schwarz
+Graustufe (statt CMYK), PostScript-Fehler und fehlende BoundingBox. In den Einstellungen kann man RGB-Farben und Graustufen-Schwarz
 auch als Fehler werten lassen. Mindest- und Höchst-dpi sind dort ebenfalls einstellbar.
 
 ## Oberfläche (Version 2)
@@ -27,7 +33,7 @@ auch als Fehler werten lassen. Mindest- und Höchst-dpi sind dort ebenfalls eins
 - Oben die **Kennzahlen** (Dateien, OK, Warnungen, Fehler), darunter die Aktionen:
   *Einzelne Dateien*, *Ordner / Projekt*, *Alle prüfen*, *Auswahl prüfen*, *Bericht speichern*.
 - Links die **Dateiliste** (Projekte mit Sammelstatus) und die Einstellungen, rechts
-  die **Prüfliste**: die Punkte 01–06 als Karten mit Status, Meldung und Details.
+  die **Prüfliste**: die Punkte 01–07 als Karten mit Status, Meldung und Details.
   Bei einem Projekt zeigt jede Karte, welche Dateien betroffen sind.
 - Die bisherige Oberfläche gibt es weiterhin: `start_klassisch.bat`.
 
@@ -81,8 +87,11 @@ Liste ziehen.
 pruefen_cli.bat "D:\Anzeigen\KW40" --html bericht.html --csv bericht.csv
 pruefen_cli.bat anzeige.eps --min-dpi 100 --max-dpi 200 --rgb-fehler
 pruefen_cli.bat "D:\Anzeigen\KW40" --ohne-unterordner
+pruefen_cli.bat anzeige.eps --ohne schriften,hintergrund
+pruefen_cli.bat anzeige.eps --nur schwarz,aufloesung
 ```
-Bei Fehlern ist der Rückgabewert 1, sonst 0. Das eignet sich z. B. für Hotfolder-Skripte.
+Kriterien für `--nur` / `--ohne`: `schwarz`, `eingebettet`, `schriften`,
+`aufloesung`, `ueberdrucken`, `hintergrund`. Bei Fehlern ist der Rückgabewert 1, sonst 0. Das eignet sich z. B. für Hotfolder-Skripte.
 
 ### Als eigenständige .exe
 

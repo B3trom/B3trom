@@ -31,6 +31,19 @@ class Status(IntEnum):
         return {0: "✔", 1: "–", 2: "⚠", 3: "✖"}[self.value]
 
 
+CHECK_TITLES = {
+    "datei": "Datei / PostScript",
+    "schwarz": "Schwarz in CMYK",
+    "eingebettet": "Pixeldaten eingebettet",
+    "schriften": "Schriften eingebettet",
+    "aufloesung": "Auflösung",
+    "ueberdrucken": "Kein Überdrucken",
+    "hintergrund": "Hintergrundfläche",
+}
+# Abwählbare Prüfkriterien ("datei" wird immer geprüft)
+OPTIONAL_CHECKS = ("schwarz", "eingebettet", "schriften", "aufloesung", "ueberdrucken", "hintergrund")
+
+
 @dataclass
 class CheckResult:
     key: str
@@ -48,6 +61,7 @@ class Settings:
     gray_black_is_error: bool = False  # Schwarz als Graustufe (statt CMYK) als Fehler werten
     gs_executable: str = ""
     timeout: int = 180
+    enabled: frozenset = frozenset(OPTIONAL_CHECKS)  # aktive Prüfkriterien
 
 
 @dataclass
@@ -65,14 +79,6 @@ class FileResult:
         return next((c for c in self.checks if c.key == key), None)
 
 
-CHECK_TITLES = {
-    "datei": "Datei / PostScript",
-    "schwarz": "Schwarz in CMYK",
-    "eingebettet": "Pixeldaten eingebettet",
-    "aufloesung": "Auflösung",
-    "ueberdrucken": "Kein Überdrucken",
-    "hintergrund": "Hintergrundfläche",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +296,18 @@ def check_background(info: EPSInfo, an: Analysis) -> CheckResult:
 # Gesamtprüfung einer Datei
 # ---------------------------------------------------------------------------
 
+def check_fonts(an: Analysis) -> CheckResult:
+    key, title = "schriften", CHECK_TITLES["schriften"]
+    if not an.missing_fonts:
+        return CheckResult(key, title, Status.OK, "Alle verwendeten Schriften sind eingebettet")
+    names = an.missing_fonts
+    return CheckResult(
+        key, title, Status.FAIL,
+        f"{len(names)} Schrift(en) nicht eingebettet: " + ", ".join(names[:3]) + (" …" if len(names) > 3 else ""),
+        [f"Nicht eingebettet: {n} (wird beim Ausgeben ersetzt)" for n in names[:MAX_DETAILS]],
+    )
+
+
 def check_file(path: str | Path, settings: Settings) -> FileResult:
     result = FileResult(path=Path(path))
     try:
@@ -311,7 +329,8 @@ def check_file(path: str | Path, settings: Settings) -> FileResult:
         result.checks.append(CheckResult(
             "datei", CHECK_TITLES["datei"], Status.FAIL,
             "Ghostscript nicht gefunden – nur Verknüpfungen geprüft", file_details))
-        result.checks.append(check_embedded(info, None))
+        if "eingebettet" in settings.enabled:
+            result.checks.append(check_embedded(info, None))
         return result
 
     try:
@@ -319,7 +338,8 @@ def check_file(path: str | Path, settings: Settings) -> FileResult:
     except AnalysisError as exc:
         result.checks.append(CheckResult("datei", CHECK_TITLES["datei"], Status.FAIL,
                                          str(exc), file_details))
-        result.checks.append(check_embedded(info, None))
+        if "eingebettet" in settings.enabled:
+            result.checks.append(check_embedded(info, None))
         return result
     result.analysis = an
 
@@ -332,18 +352,17 @@ def check_file(path: str | Path, settings: Settings) -> FileResult:
         status, message = Status.WARN, "Kopfzeile ist keine gültige EPSF-Kennung"
     elif info.bbox is None:
         status, message = Status.WARN, "Keine %%BoundingBox angegeben"
-    if an.missing_fonts:
-        file_details.append("Nicht eingebettete Schrift(en): " + ", ".join(an.missing_fonts[:MAX_DETAILS]))
-        if status == Status.OK:
-            status, message = Status.WARN, (
-                f"{len(an.missing_fonts)} Schrift(en) nicht eingebettet: "
-                + ", ".join(an.missing_fonts[:3]) + (" …" if len(an.missing_fonts) > 3 else "")
-            )
     result.checks.append(CheckResult("datei", CHECK_TITLES["datei"], status, message, file_details))
 
-    result.checks.append(check_black(an, settings))
-    result.checks.append(check_embedded(info, an))
-    result.checks.append(check_resolution(an, settings))
-    result.checks.append(check_overprint(an))
-    result.checks.append(check_background(info, an))
+    checks = {
+        "schwarz": lambda: check_black(an, settings),
+        "eingebettet": lambda: check_embedded(info, an),
+        "schriften": lambda: check_fonts(an),
+        "aufloesung": lambda: check_resolution(an, settings),
+        "ueberdrucken": lambda: check_overprint(an),
+        "hintergrund": lambda: check_background(info, an),
+    }
+    for key in OPTIONAL_CHECKS:
+        if key in settings.enabled:
+            result.checks.append(checks[key]())
     return result

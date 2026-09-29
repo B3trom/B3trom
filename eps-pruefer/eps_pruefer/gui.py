@@ -13,7 +13,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import __version__
-from .checks import CHECK_TITLES, FileResult, Settings, Status, check_file
+from .checks import CHECK_TITLES, OPTIONAL_CHECKS, FileResult, Settings, Status, check_file
 from .cli import folder_files
 from .ghostscript import find_ghostscript, ghostscript_version
 from .report import CHECK_ORDER, text_report, write_csv, write_html
@@ -30,7 +30,8 @@ ROW_COLORS = {
 COLUMN_TITLES = {
     "datei": "Datei/PostScript",
     "schwarz": "Schwarz CMYK",
-    "eingebettet": "Eingebettet",
+    "eingebettet": "Bilder eingeb.",
+    "schriften": "Schriften",
     "aufloesung": "Auflösung",
     "ueberdrucken": "Überdrucken",
     "hintergrund": "Hintergrund",
@@ -79,6 +80,8 @@ class App:
         self.var_rgb = tk.BooleanVar(value=self.cfg.get("rgb_is_error", False))
         self.var_gray = tk.BooleanVar(value=self.cfg.get("gray_black_is_error", False))
         self.var_recursive = tk.BooleanVar(value=self.cfg.get("recursive", True))
+        enabled = set(self.cfg.get("enabled", OPTIONAL_CHECKS))
+        self.var_checks = {k: tk.BooleanVar(value=k in enabled) for k in OPTIONAL_CHECKS}
         self.run_files: list[Path] = []
         self.gs_path = find_ghostscript(self.cfg.get("gs_executable"))
         self.var_gs = tk.StringVar()
@@ -148,6 +151,12 @@ class App:
         ttk.Label(opts, text="Ghostscript:").grid(row=1, column=0, sticky="w", pady=(4, 0))
         ttk.Label(opts, textvariable=self.var_gs).grid(row=1, column=1, columnspan=3, sticky="w", pady=(4, 0))
         ttk.Button(opts, text="Ändern …", command=self.ask_gs).grid(row=1, column=4, sticky="w", pady=(4, 0))
+        ttk.Label(opts, text="Prüfkriterien:").grid(row=2, column=0, sticky="w", pady=(4, 0))
+        crit = ttk.Frame(opts)
+        crit.grid(row=2, column=1, columnspan=4, sticky="w", pady=(4, 0))
+        for key in OPTIONAL_CHECKS:
+            ttk.Checkbutton(crit, text=CHECK_TITLES[key], variable=self.var_checks[key]).pack(
+                side="left", padx=(0, 12))
 
         paned = ttk.PanedWindow(self.root, orient="vertical")
         paned.pack(fill="both", expand=True, padx=8, pady=4)
@@ -360,7 +369,8 @@ class App:
             min_dpi = float(self.var_min_dpi.get())
         except (tk.TclError, ValueError):
             min_dpi = 80.0
-        return Settings(min_dpi=min_dpi, max_dpi=dpi, rgb_is_error=self.var_rgb.get(),
+        return Settings(enabled=frozenset(k for k, v in self.var_checks.items() if v.get()),
+                        min_dpi=min_dpi, max_dpi=dpi, rgb_is_error=self.var_rgb.get(),
                         gray_black_is_error=self.var_gray.get(), gs_executable=self.gs_path or "")
 
     def start_check(self, selection_only: bool = False):
@@ -435,7 +445,7 @@ class App:
         vals = [f"{res.status.symbol} {res.status.label}"]
         for key in CHECK_ORDER:
             c = res.check(key)
-            vals.append(f"{c.status.symbol} {c.status.label}" if c else "")
+            vals.append(f"{c.status.symbol} {c.status.label}" if c else "– aus")
         self.tree.item(iid, values=vals, tags=(f"s{int(res.status)}",))
         parent = self.tree.parent(iid)
         if parent:
@@ -605,6 +615,7 @@ class App:
             rgb_is_error=self.var_rgb.get(),
             gray_black_is_error=self.var_gray.get(),
             recursive=self.var_recursive.get(),
+            enabled=[k for k, v in self.var_checks.items() if v.get()],
             geometry=self.root.geometry(),
         )
         if self.gs_path:
