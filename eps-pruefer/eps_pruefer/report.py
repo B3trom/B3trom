@@ -102,7 +102,7 @@ def write_html(results: list[FileResult], path: str | Path, settings: Settings) 
 <html lang="de"><head><meta charset="utf-8"><title>EPS-Prüfbericht</title>
 <style>{_CSS}</style></head><body>
 <h1>EPS-Prüfbericht</h1>
-<div class="meta">Erstellt {datetime.now():%d.%m.%Y %H:%M} · max. Auflösung {settings.max_dpi:g} dpi ·
+<div class="meta">Erstellt {datetime.now():%d.%m.%Y %H:%M} · Auflösung {settings.min_dpi:g}–{settings.max_dpi:g} dpi ·
 {len(results)} Datei(en)</div>
 <table><tr><th>Datei</th><th>Gesamt</th>{head}</tr>{''.join(rows)}</table>
 {''.join(sections)}

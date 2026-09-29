@@ -32,6 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="eps_pruefer", description="Prüft EPS-Dateien für Druck und Anzeigensatz.")
     ap.add_argument("--cli", action="store_true", help="ohne Oberfläche prüfen")
     ap.add_argument("pfade", nargs="+", help="EPS-Dateien oder Ordner")
+    ap.add_argument("--min-dpi", type=float, default=80.0)
     ap.add_argument("--max-dpi", type=float, default=150.0)
     ap.add_argument("--rgb-fehler", action="store_true", help="alle RGB-Farben als Fehler werten")
     ap.add_argument("--grau-fehler", action="store_true", help="Graustufen-Schwarz als Fehler werten")
@@ -44,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
     gs = find_ghostscript(args.gs)
     if not gs:
         print("WARNUNG: Ghostscript nicht gefunden – es werden nur Verknüpfungen geprüft.", file=sys.stderr)
-    settings = Settings(max_dpi=args.max_dpi, rgb_is_error=args.rgb_fehler,
+    settings = Settings(min_dpi=args.min_dpi, max_dpi=args.max_dpi, rgb_is_error=args.rgb_fehler,
                         gray_black_is_error=args.grau_fehler, gs_executable=gs or "")
 
     results = [check_file(f, settings) for f in collect_files(args.pfade, not args.ohne_unterordner)]

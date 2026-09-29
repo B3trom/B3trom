@@ -64,7 +64,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
         EMBEDDED_FONT + BIND_PROLOG
         + "0 0 0 0 k newpath 0 0 moveto 200 0 lineto 200 100 lineto 0 100 lineto closepath F\n"
         + "0 0 0 1 k " + TEXT_EMBEDDED + _image(100)
-        + "gsave 20 60 translate 30 30 scale 8 8 true [8 0 0 -8 0 8] {<ff00ff00ff00ff00>} imagemask grestore\n"
+        + "gsave 20 60 translate 5 5 scale 8 8 true [8 0 0 -8 0 8] {<ff00ff00ff00ff00>} imagemask grestore\n"
         + _dict_image(140),
     ),
     "muster.eps": (
@@ -86,6 +86,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "grau_schwarz.eps": ("", BACKGROUND_CMYK + "0 setgray " + TEXT),
     "hochaufgeloest.eps": ("", BACKGROUND_CMYK + _image(300)),
     "rgb_bild.eps": ("", BACKGROUND_CMYK + _image(120, ncomp=3)),
+    "niedrigaufgeloest.eps": ("", BACKGROUND_CMYK + _image(60)),
     "ueberdrucken.eps": (
         "",
         BACKGROUND_CMYK + "true setoverprint 0 0 0 1 setcmykcolor 10 10 moveto 50 50 lineto stroke",

@@ -44,6 +44,7 @@ class CheckResult:
 
 @dataclass
 class Settings:
+    min_dpi: float = 80.0
     max_dpi: float = 150.0
     rgb_is_error: bool = False  # auch nicht-schwarze RGB-Farben/-Bilder als Fehler werten
     gray_black_is_error: bool = False  # Schwarz als Graustufe (statt CMYK) als Fehler werten
@@ -194,31 +195,43 @@ def check_embedded(info: EPSInfo, an: Analysis | None) -> CheckResult:
                        f"{n_img} Bild(er) vollständig eingebettet")
 
 
+def resolution_title(s: Settings) -> str:
+    return f"{CHECK_TITLES['aufloesung']} {s.min_dpi:g}–{s.max_dpi:g} dpi"
+
+
 def check_resolution(an: Analysis, s: Settings) -> CheckResult:
-    title = f"{CHECK_TITLES['aufloesung']} ≤ {s.max_dpi:g} dpi"
+    title = resolution_title(s)
     images = an.images
     if not images:
         return CheckResult("aufloesung", title, Status.OK, "Keine Pixeldaten enthalten")
-    too_high = [ev for ev in images if ev.dpi > s.max_dpi + DPI_TOLERANCE]
+    measured = [ev for ev in images if ev.dpi > 0]
+    too_high = [ev for ev in measured if ev.dpi > s.max_dpi + DPI_TOLERANCE]
+    too_low = [ev for ev in measured if min(ev.dpi_x, ev.dpi_y) < s.min_dpi - DPI_TOLERANCE]
     details = []
     for ev in images[: MAX_DETAILS * 2]:
-        mark = "ZU HOCH – " if ev in too_high else ""
+        mark = "ZU HOCH – " if ev in too_high else "ZU NIEDRIG – " if ev in too_low else ""
         model = _color_model(ev.cs_family, ev.cs_detail)
         kind = ("Strichbild (1 Bit)" if ev.op == "imagemask"
                 else {"cmyk": "CMYK", "rgb": "RGB", "gray": "Graustufe"}.get(model, ev.cs_family))
         dpi = (f"{ev.dpi_x:.0f} dpi" if abs(ev.dpi_x - ev.dpi_y) < 1
                else f"{ev.dpi_x:.0f} × {ev.dpi_y:.0f} dpi")
         details.append(f"{mark}{dpi}, {ev.width}×{ev.height} px, {kind}{_fmt_box(ev)}")
-    max_dpi = max(ev.dpi for ev in images)
+    span = ""
+    if measured:
+        lo = min(min(ev.dpi_x, ev.dpi_y) for ev in measured)
+        hi = max(ev.dpi for ev in measured)
+        span = f"{lo:.0f} dpi" if round(lo) == round(hi) else f"{lo:.0f}–{hi:.0f} dpi"
+    problems = []
     if too_high:
+        problems.append(f"{len(too_high)} über {s.max_dpi:g} dpi")
+    if too_low:
+        problems.append(f"{len(too_low)} unter {s.min_dpi:g} dpi")
+    if problems:
         return CheckResult(
             "aufloesung", title, Status.FAIL,
-            f"{len(too_high)} von {len(images)} Bild(ern) über {s.max_dpi:g} dpi "
-            f"(max. {max_dpi:.0f} dpi)",
-            details,
+            f"{' und '.join(problems)} (von {len(images)} Bild(ern), {span})", details,
         )
-    return CheckResult("aufloesung", title, Status.OK,
-                       f"{len(images)} Bild(er), max. {max_dpi:.0f} dpi", details)
+    return CheckResult("aufloesung", title, Status.OK, f"{len(images)} Bild(er), {span}", details)
 
 
 def check_overprint(an: Analysis) -> CheckResult:

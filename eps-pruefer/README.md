@@ -9,14 +9,27 @@ im Dateikopf aus.
 |---|---|
 | **Schwarz in CMYK** | ein schwarzer Wert als RGB angelegt ist (R, G und B ≤ 20 %), in Flächen, Konturen, Texten, Mustern, Verläufen oder Strichbildern |
 | **Pixeldaten eingebettet** | die Datei Bilder nur verknüpft (OPI `%%ImageFileName`/`%ALDImageFileName`, DCS-Farbauszugsdateien, `%%IncludeFile`, `%%DocumentNeededFiles` …) |
-| **Auflösung ≤ 150 dpi** | ein Bild eine effektive Auflösung über dem Grenzwert hat (Pixel ÷ platzierte Größe, Skalierung und Drehung sind berücksichtigt) |
+| **Auflösung 80–150 dpi** | ein Bild eine effektive Auflösung unter 80 oder über 150 dpi hat (Pixel ÷ platzierte Größe, Skalierung und Drehung sind berücksichtigt; beide Grenzwerte einstellbar) |
 | **Kein Überdrucken** | irgendein Objekt beim Malen auf Überdrucken steht (`setoverprint true`) |
 | **Hintergrundfläche** | das unterste gemalte Objekt keine Farbfläche ist, nicht die ganze BoundingBox abdeckt, auf Überdrucken steht oder weniger als 100 % Deckkraft hat |
 
 Zusätzlich gibt es **Warnungen** für andere RGB-Farben, RGB-Bilder, Schwarz als
 Graustufe (statt CMYK), nicht eingebettete Schriften, PostScript-Fehler und fehlende
 BoundingBox. In den Einstellungen kann man RGB-Farben und Graustufen-Schwarz
-auch als Fehler werten lassen. Der dpi-Grenzwert ist dort ebenfalls einstellbar.
+auch als Fehler werten lassen. Mindest- und Höchst-dpi sind dort ebenfalls einstellbar.
+
+## Oberfläche (Version 2)
+
+- **Kacheldesign** mit 3D-Effekt: Kacheln werfen einen weichen Schatten, heben
+  sich beim Überfahren an und werden beim Klick eingedrückt.
+- **Hell-/Dunkelmodus** über die Kachel ☾/☀ oben rechts. Beim ersten Start wird
+  die Windows-Einstellung übernommen, danach merkt sich das Programm die Wahl.
+- Oben die **Kennzahlen** (Dateien, OK, Warnungen, Fehler), darunter die Aktionen:
+  *Einzelne Dateien*, *Ordner / Projekt*, *Alle prüfen*, *Auswahl prüfen*, *Bericht speichern*.
+- Links die **Dateiliste** (Projekte mit Sammelstatus) und die Einstellungen, rechts
+  die **Prüfliste**: die Punkte 01–06 als Karten mit Status, Meldung und Details.
+  Bei einem Projekt zeigt jede Karte, welche Dateien betroffen sind.
+- Die bisherige Oberfläche gibt es weiterhin: `start_klassisch.bat`.
 
 ---
 
@@ -66,7 +79,7 @@ Liste ziehen.
 
 ```bat
 pruefen_cli.bat "D:\Anzeigen\KW40" --html bericht.html --csv bericht.csv
-pruefen_cli.bat anzeige.eps --max-dpi 200 --rgb-fehler
+pruefen_cli.bat anzeige.eps --min-dpi 100 --max-dpi 200 --rgb-fehler
 pruefen_cli.bat "D:\Anzeigen\KW40" --ohne-unterordner
 ```
 Bei Fehlern ist der Rückgabewert 1, sonst 0. Das eignet sich z. B. für Hotfolder-Skripte.
@@ -127,6 +140,7 @@ Aufbau:
 | `eps_pruefer/epsfile.py` | EPS einlesen, DOS-Header, DSC-Kommentare, Verknüpfungen |
 | `eps_pruefer/analyzer.py` | Ghostscript-Aufruf und Auswertung des Protokolls |
 | `eps_pruefer/checks.py` | Prüfregeln und Grenzwerte |
-| `eps_pruefer/gui.py` | Oberfläche (Tkinter) |
+| `eps_pruefer/gui2.py` | Oberfläche v2 (Kacheln, Hell/Dunkel, Prüfliste) |
+| `eps_pruefer/gui.py` | klassische Oberfläche v1 |
 | `eps_pruefer/report.py` | HTML-/CSV-/Text-Bericht |
 | `eps_pruefer/cli.py` | Kommandozeile |

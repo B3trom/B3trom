@@ -70,6 +70,13 @@ class PruefungTest(unittest.TestCase):
         img = self.result("hochaufgeloest.eps").analysis.images[0]
         self.assertAlmostEqual(img.dpi, 300, delta=0.5)
 
+    def test_mindestaufloesung(self):
+        r = self.result("niedrigaufgeloest.eps")
+        self.assertEqual(r.check("aufloesung").status, Status.FAIL)
+        self.assertIn("unter 80 dpi", r.check("aufloesung").message)
+        lax = check_file(self.dir / "niedrigaufgeloest.eps", Settings(gs_executable=GS, min_dpi=50))
+        self.assertEqual(lax.check("aufloesung").status, Status.OK)
+
     def test_aufloesung_grenzwert_einstellbar(self):
         r = check_file(self.dir / "ok.eps", Settings(gs_executable=GS, max_dpi=120))
         self.assertEqual(r.check("aufloesung").status, Status.FAIL)

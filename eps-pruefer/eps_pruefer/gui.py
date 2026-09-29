@@ -75,6 +75,7 @@ class App:
         self.cancel = threading.Event()
 
         self.var_dpi = tk.DoubleVar(value=self.cfg.get("max_dpi", 150))
+        self.var_min_dpi = tk.DoubleVar(value=self.cfg.get("min_dpi", 80))
         self.var_rgb = tk.BooleanVar(value=self.cfg.get("rgb_is_error", False))
         self.var_gray = tk.BooleanVar(value=self.cfg.get("gray_black_is_error", False))
         self.var_recursive = tk.BooleanVar(value=self.cfg.get("recursive", True))
@@ -133,9 +134,12 @@ class App:
 
         opts = ttk.LabelFrame(self.root, text="Einstellungen", padding=(8, 4))
         opts.pack(fill="x", padx=8, pady=4)
-        ttk.Label(opts, text="Max. Auflösung Pixeldaten:").grid(row=0, column=0, sticky="w")
-        ttk.Spinbox(opts, from_=36, to=2400, increment=1, width=6, textvariable=self.var_dpi).grid(
-            row=0, column=1, sticky="w", padx=(4, 2))
+        ttk.Label(opts, text="Auflösung Pixeldaten:").grid(row=0, column=0, sticky="w")
+        dpi = ttk.Frame(opts)
+        dpi.grid(row=0, column=1, sticky="w", padx=(4, 2))
+        ttk.Spinbox(dpi, from_=1, to=2400, increment=1, width=5, textvariable=self.var_min_dpi).pack(side="left")
+        ttk.Label(dpi, text=" bis ").pack(side="left")
+        ttk.Spinbox(dpi, from_=36, to=2400, increment=1, width=5, textvariable=self.var_dpi).pack(side="left")
         ttk.Label(opts, text="dpi").grid(row=0, column=2, sticky="w", padx=(0, 20))
         ttk.Checkbutton(opts, text="Alle RGB-Farben/-Bilder als Fehler werten",
                         variable=self.var_rgb).grid(row=0, column=3, sticky="w", padx=(0, 20))
@@ -352,7 +356,11 @@ class App:
             dpi = float(self.var_dpi.get())
         except (tk.TclError, ValueError):
             dpi = 150.0
-        return Settings(max_dpi=dpi, rgb_is_error=self.var_rgb.get(),
+        try:
+            min_dpi = float(self.var_min_dpi.get())
+        except (tk.TclError, ValueError):
+            min_dpi = 80.0
+        return Settings(min_dpi=min_dpi, max_dpi=dpi, rgb_is_error=self.var_rgb.get(),
                         gray_black_is_error=self.var_gray.get(), gs_executable=self.gs_path or "")
 
     def start_check(self, selection_only: bool = False):
@@ -575,7 +583,7 @@ class App:
             "• Schwarz in CMYK – Schwarz darf nicht als RGB angelegt sein "
             "(weitere RGB-Farben/-Bilder und Graustufen-Schwarz: Warnung)\n"
             "• Pixeldaten eingebettet – keine OPI-/DCS-/Datei-Verknüpfungen\n"
-            "• Auflösung – effektive Auflösung aller Bilder ≤ Grenzwert\n"
+            "• Auflösung – effektive Auflösung aller Bilder zwischen Mindest- und Höchstwert\n"
             "• Kein Überdrucken – kein Objekt auf Überdrucken gestellt\n"
             "• Hintergrundfläche – das unterste Objekt ist eine deckende "
             "Farbfläche (100 % Deckkraft), die die ganze BoundingBox abdeckt\n\n"
@@ -593,6 +601,7 @@ class App:
         self.cancel.set()
         self.cfg.update(
             max_dpi=self._settings().max_dpi,
+            min_dpi=self._settings().min_dpi,
             rgb_is_error=self.var_rgb.get(),
             gray_black_is_error=self.var_gray.get(),
             recursive=self.var_recursive.get(),
