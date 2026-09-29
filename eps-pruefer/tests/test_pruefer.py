@@ -1,0 +1,125 @@
+"""Automatische Tests. Aufruf im Projektordner:  python -m unittest -v"""
+
+from __future__ import annotations
+
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from eps_pruefer.checks import Settings, Status, check_file  # noqa: E402
+from eps_pruefer.epsfile import read_eps  # noqa: E402
+from eps_pruefer.ghostscript import find_ghostscript  # noqa: E402
+from make_samples import write_samples  # noqa: E402
+
+GS = find_ghostscript()
+
+
+@unittest.skipUnless(GS, "Ghostscript nicht installiert")
+class PruefungTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.dir = Path(cls._tmp.name)
+        write_samples(cls.dir)
+        cls.settings = Settings(gs_executable=GS)
+        cls.cache = {}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def result(self, name):
+        if name not in self.cache:
+            self.cache[name] = check_file(self.dir / name, self.settings)
+        return self.cache[name]
+
+    def status(self, name, key):
+        return self.result(name).check(key).status
+
+    def test_ok_datei_besteht_alles(self):
+        r = self.result("ok.eps")
+        for c in r.checks:
+            self.assertEqual(c.status, Status.OK, f"{c.title}: {c.message}")
+        self.assertEqual(len(r.analysis.images), 3)
+
+    def test_rgb_schwarz_ist_fehler(self):
+        self.assertEqual(self.status("rgb_schwarz.eps", "schwarz"), Status.FAIL)
+
+    def test_rgb_farbe_ist_warnung_oder_fehler(self):
+        self.assertEqual(self.status("rgb_farbe.eps", "schwarz"), Status.WARN)
+        strict = check_file(self.dir / "rgb_farbe.eps", Settings(gs_executable=GS, rgb_is_error=True))
+        self.assertEqual(strict.check("schwarz").status, Status.FAIL)
+
+    def test_graustufen_schwarz_ist_warnung(self):
+        self.assertEqual(self.status("grau_schwarz.eps", "schwarz"), Status.WARN)
+
+    def test_rgb_bild_ist_warnung(self):
+        self.assertEqual(self.status("rgb_bild.eps", "schwarz"), Status.WARN)
+
+    def test_rgb_im_muster_wird_gefunden(self):
+        self.assertEqual(self.status("muster.eps", "schwarz"), Status.FAIL)
+
+    def test_aufloesung(self):
+        self.assertEqual(self.status("hochaufgeloest.eps", "aufloesung"), Status.FAIL)
+        self.assertEqual(self.status("strichbild_hoch.eps", "aufloesung"), Status.FAIL)
+        self.assertEqual(self.status("rgb_bild.eps", "aufloesung"), Status.OK)
+        img = self.result("hochaufgeloest.eps").analysis.images[0]
+        self.assertAlmostEqual(img.dpi, 300, delta=0.5)
+
+    def test_aufloesung_grenzwert_einstellbar(self):
+        r = check_file(self.dir / "ok.eps", Settings(gs_executable=GS, max_dpi=120))
+        self.assertEqual(r.check("aufloesung").status, Status.FAIL)
+
+    def test_verknuepfung(self):
+        self.assertEqual(self.status("verknuepft_opi.eps", "eingebettet"), Status.FAIL)
+        self.assertEqual(self.status("ok.eps", "eingebettet"), Status.OK)
+
+    def test_ueberdrucken(self):
+        self.assertEqual(self.status("ueberdrucken.eps", "ueberdrucken"), Status.FAIL)
+
+    def test_hintergrund(self):
+        self.assertEqual(self.status("hintergrund_pfad.eps", "hintergrund"), Status.OK)
+        for name in (
+            "ohne_hintergrund.eps",
+            "hintergrund_zu_klein.eps",
+            "hintergrund_bild.eps",
+            "hintergrund_transparent.eps",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(self.status(name, "hintergrund"), Status.FAIL)
+
+    def test_postscript_fehler(self):
+        self.assertEqual(self.status("postscript_fehler.eps", "datei"), Status.FAIL)
+
+    def test_nicht_eingebettete_schrift(self):
+        r = self.result("rgb_schwarz.eps")
+        self.assertIn("Helvetica", r.analysis.missing_fonts)
+        self.assertEqual(self.result("ok.eps").analysis.missing_fonts, [])
+
+    def test_dos_eps(self):
+        r = self.result("dos_header.eps")
+        self.assertTrue(r.info.has_dos_header)
+        self.assertEqual(r.status, Status.OK)
+
+
+class EpsFileTest(unittest.TestCase):
+    def test_bbox_atend_und_verknuepfungen(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "x.eps"
+            p.write_bytes(
+                b"%!PS-Adobe-3.0 EPSF-3.0\r%%BoundingBox: (atend)\r"
+                b"%%DocumentSuppliedResources: procset Test\r%%+ file eingebettet.eps\r"
+                b"%%DocumentNeededResources: font Helvetica\r%%+ file extern.tif\r"
+                b"%%EndComments\r%%Trailer\r%%BoundingBox: 1 2 3 4\r%%EOF\r"
+            )
+            info = read_eps(p)
+            self.assertEqual(str(info.bbox), "1 2 3 4")
+            self.assertEqual(info.links, ["Benötigte externe Datei: extern.tif"])
+
+
+if __name__ == "__main__":
+    unittest.main()
