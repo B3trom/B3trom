@@ -250,7 +250,7 @@ CHECK_DESCRIPTIONS = {
     "eingebettet": "Alle Pixeldaten sind eingebettet, keine Verknüpfungen",
     "aufloesung": "Bilder liegen zwischen {min} und {max} dpi",
     "ueberdrucken": "Kein Objekt steht auf Überdrucken",
-    "hintergrund": "Unterstes Objekt ist eine deckende Farbfläche über die ganze Fläche",
+    "hintergrund": "Unterstes Objekt ist eine deckende Farbfläche (ohne Transparenz)",
 }
 
 
@@ -1037,7 +1037,7 @@ class App:
             "03  Pixeldaten eingebettet – keine OPI-/DCS-/Datei-Verknüpfungen\n"
             f"04  Auflösung – alle Bilder zwischen {s.min_dpi:g} und {s.max_dpi:g} dpi\n"
             "05  Kein Überdrucken\n"
-            "06  Hintergrundfläche – unterstes Objekt ist eine deckende Farbfläche\n\n"
+            "06  Hintergrundfläche – unterstes Objekt ist eine deckende Farbfläche (Warnung, wenn sie fehlt oder transparent ist)\n\n"
             "Bedienung:\n"
             "• „Einzelne Dateien“ oder „Ordner / Projekt“ hinzufügen\n"
             "• „Alle prüfen“ oder nur die markierten Einträge mit „Auswahl prüfen“\n"

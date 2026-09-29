@@ -11,7 +11,7 @@ im Dateikopf aus.
 | **Pixeldaten eingebettet** | die Datei Bilder nur verknüpft (OPI `%%ImageFileName`/`%ALDImageFileName`, DCS-Farbauszugsdateien, `%%IncludeFile`, `%%DocumentNeededFiles` …) |
 | **Auflösung 80–150 dpi** | ein Bild eine effektive Auflösung unter 80 oder über 150 dpi hat (Pixel ÷ platzierte Größe, Skalierung und Drehung sind berücksichtigt; beide Grenzwerte einstellbar) |
 | **Kein Überdrucken** | irgendein Objekt beim Malen auf Überdrucken steht (`setoverprint true`) |
-| **Hintergrundfläche** | das unterste gemalte Objekt keine Farbfläche ist, nicht die ganze BoundingBox abdeckt, auf Überdrucken steht oder weniger als 100 % Deckkraft hat |
+| **Hintergrundfläche** | *nur Warnung:* das unterste gemalte Objekt ist keine Farbfläche (z. B. Bild, Text, Kontur oder gar nichts), oder die Fläche hat Transparenz. Die Fläche muss **nicht** die ganze Anzeige füllen, ihre Abdeckung wird nur als Info angezeigt |
 
 Zusätzlich gibt es **Warnungen** für andere RGB-Farben, RGB-Bilder, Schwarz als
 Graustufe (statt CMYK), nicht eingebettete Schriften, PostScript-Fehler und fehlende
@@ -111,12 +111,12 @@ Deckkraft, Ausdehnung und bei Bildern die effektive Auflösung ins Protokoll.
 ### Grenzen, die man kennen sollte
 
 - **Deckkraft:** PostScript/EPS kennt keine echte Transparenz. Programme wie
-  Illustrator reduzieren Transparenz beim EPS-Export. Geprüft wird deshalb:
-  unterstes Objekt ist eine Fläche, nicht auf Überdrucken, kein
-  `SetTransparency`-pdfmark davor, Ghostscript-Alpha = 100 %.
-- **Abdeckung der Hintergrundfläche:** Verglichen wird das umschließende Rechteck
-  der Fläche (geschnitten mit dem Beschneidungspfad) mit der (HiRes-)BoundingBox,
-  Toleranz 1 pt. Hat eine Fläche ein Loch (Even-Odd-Füllung), gibt es eine Warnung.
+  Illustrator reduzieren Transparenz beim EPS-Export. Als Transparenz gilt deshalb:
+  ein `SetTransparency`-pdfmark vor der Fläche oder Ghostscript-Alpha unter 100 %.
+  Ob die Fläche auf Überdrucken steht, prüft Punkt „Kein Überdrucken“.
+- **Abdeckung der Hintergrundfläche:** Die Info „deckt ca. x % ab“ vergleicht das
+  umschließende Rechteck der Fläche (geschnitten mit dem Beschneidungspfad) mit
+  der (HiRes-)BoundingBox.
 - **RGB-Bilder:** Die einzelnen Pixel werden nicht auf Schwarz untersucht. Ein
   RGB-Bild wird als Ganzes gemeldet (Warnung bzw. Fehler, je nach Einstellung).
 - **Schwarz-Schwelle:** Als „Schwarz“ gilt RGB, wenn alle Kanäle ≤ 20 % (≤ 51 von 255)

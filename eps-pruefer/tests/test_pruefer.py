@@ -89,15 +89,15 @@ class PruefungTest(unittest.TestCase):
         self.assertEqual(self.status("ueberdrucken.eps", "ueberdrucken"), Status.FAIL)
 
     def test_hintergrund(self):
-        self.assertEqual(self.status("hintergrund_pfad.eps", "hintergrund"), Status.OK)
-        for name in (
-            "ohne_hintergrund.eps",
-            "hintergrund_zu_klein.eps",
-            "hintergrund_bild.eps",
-            "hintergrund_transparent.eps",
-        ):
+        # Fläche muss nicht die ganze BoundingBox füllen
+        for name in ("hintergrund_pfad.eps", "hintergrund_zu_klein.eps", "hintergrund_teilflaeche.eps", "ok.eps"):
             with self.subTest(name=name):
-                self.assertEqual(self.status(name, "hintergrund"), Status.FAIL)
+                self.assertEqual(self.status(name, "hintergrund"), Status.OK)
+        self.assertIn("75 %", " ".join(self.result("hintergrund_zu_klein.eps").check("hintergrund").details))
+        # Warnung: keine Fläche unten bzw. Fläche mit Transparenz
+        for name in ("hintergrund_bild.eps", "hintergrund_transparent.eps", "ohne_flaeche.eps"):
+            with self.subTest(name=name):
+                self.assertEqual(self.status(name, "hintergrund"), Status.WARN)
 
     def test_postscript_fehler(self):
         self.assertEqual(self.status("postscript_fehler.eps", "datei"), Status.FAIL)

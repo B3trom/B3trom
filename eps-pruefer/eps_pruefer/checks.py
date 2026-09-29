@@ -11,8 +11,6 @@ from .epsfile import EPSInfo, EPSReadError, read_eps
 
 # Farbwerte (0..1), bis zu denen ein RGB- bzw. Graustufen-Wert als "Schwarz" gilt
 BLACK_THRESHOLD = 0.2
-# Toleranz in Punkt, mit der die Hintergrundfläche die BoundingBox abdecken muss
-COVER_TOLERANCE = 1.0
 # Rundungstoleranz für die Auflösung
 DPI_TOLERANCE = 0.5
 MAX_DETAILS = 25
@@ -244,55 +242,48 @@ def check_overprint(an: Analysis) -> CheckResult:
                        f"{len(hits)} Objekt(e) auf Überdrucken gestellt", details)
 
 
+AREA_OPS = ("fill", "eofill", "rectfill", "shfill")
+
+
+def _coverage(info: EPSInfo, ev: PaintEvent) -> str:
+    """Info-Text, wie viel der BoundingBox die Fläche abdeckt (keine Bewertung)."""
+    bbox, box = info.effective_bbox, ev.visible_box
+    if bbox is None or box is None or bbox.width <= 0 or bbox.height <= 0:
+        return ""
+    w = max(0.0, min(box.urx, bbox.urx) - max(box.llx, bbox.llx))
+    h = max(0.0, min(box.ury, bbox.ury) - max(box.lly, bbox.lly))
+    share = 100 * w * h / (bbox.width * bbox.height)
+    return f"Fläche deckt ca. {share:.0f} % der BoundingBox ab"
+
+
 def check_background(info: EPSInfo, an: Analysis) -> CheckResult:
+    """Unterstes Objekt soll eine deckende Farbfläche sein (Größe egal).
+
+    Warnung nur, wenn dort keine Fläche liegt oder die Fläche Transparenz hat.
+    """
     key, title = "hintergrund", CHECK_TITLES["hintergrund"]
     first = an.first_paint
     if first is None:
-        return CheckResult(key, title, Status.FAIL, "Die Datei malt keine Objekte")
+        return CheckResult(key, title, Status.WARN, "Keine Farbfläche vorhanden – die Datei malt keine Objekte")
 
-    desc = f"Unterstes Objekt: {first.op}, {_fmt_color(first)}{_fmt_box(first)}"
-    problems: list[str] = []
-    warnings: list[str] = []
+    details = [f"Unterstes Objekt: {first.op}, {_fmt_color(first)}{_fmt_box(first)}"]
+    if first.kind == "IMAGE" or first.op not in AREA_OPS:
+        what = ("ein Bild" if first.kind == "IMAGE"
+                else "eine Kontur" if first.op in ("stroke", "rectstroke") else "Text")
+        return CheckResult(key, title, Status.WARN,
+                           f"Keine Farbfläche als unterstes Objekt (dort liegt {what})", details)
 
-    if first.kind == "IMAGE":
-        problems.append("Unterstes Objekt ist ein Bild, keine Farbfläche")
-    elif first.op in ("stroke", "rectstroke"):
-        problems.append("Unterstes Objekt ist eine Kontur, keine Farbfläche")
-    elif first.op not in ("fill", "eofill", "rectfill", "shfill"):
-        problems.append("Unterstes Objekt ist Text, keine Farbfläche")
-
+    transparency = []
     if first.alpha < 1.0:
-        problems.append(f"Deckkraft nur {first.alpha * 100:.0f} %")
-    if first.overprint:
-        problems.append("Fläche ist auf Überdrucken gestellt")
+        transparency.append(f"Deckkraft nur {first.alpha * 100:.0f} %")
     if any(t.before_first_paint for t in an.transparency):
-        problems.append("Vor der Fläche wird Transparenz gesetzt (pdfmark SetTransparency)")
-
-    bbox = info.effective_bbox
-    box = first.visible_box
-    if bbox is None:
-        warnings.append("Keine BoundingBox in der Datei – Abdeckung nicht prüfbar")
-    elif box is None:
-        if not problems:
-            problems.append("Ausdehnung der Fläche nicht ermittelbar")
-    else:
-        tol = COVER_TOLERANCE
-        if (box.llx > bbox.llx + tol or box.lly > bbox.lly + tol
-                or box.urx < bbox.urx - tol or box.ury < bbox.ury - tol):
-            problems.append(
-                f"Fläche ({box.llx:.1f} {box.lly:.1f} {box.urx:.1f} {box.ury:.1f}) deckt die "
-                f"BoundingBox ({bbox}) nicht vollständig ab"
-            )
-    if first.op == "eofill":
-        warnings.append("Fläche mit Even-Odd-Füllregel – evtl. Aussparungen enthalten")
-
-    details = [desc] + problems + warnings
-    if problems:
-        return CheckResult(key, title, Status.FAIL, problems[0], details)
-    if warnings:
-        return CheckResult(key, title, Status.WARN, warnings[0], details)
-    return CheckResult(key, title, Status.OK,
-                       f"Deckende Fläche über gesamte BoundingBox ({_fmt_color(first)})", details)
+        transparency.append("Vor der Fläche wird Transparenz gesetzt (pdfmark SetTransparency)")
+    if cover := _coverage(info, first):
+        details.append(cover)
+    if transparency:
+        return CheckResult(key, title, Status.WARN, "Farbfläche mit Transparenz: " + transparency[0],
+                           details + transparency)
+    return CheckResult(key, title, Status.OK, f"Deckende Farbfläche vorhanden ({_fmt_color(first)})", details)
 
 
 # ---------------------------------------------------------------------------

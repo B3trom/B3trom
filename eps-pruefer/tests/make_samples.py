@@ -91,7 +91,8 @@ SAMPLES: dict[str, tuple[str, str]] = {
         "",
         BACKGROUND_CMYK + "true setoverprint 0 0 0 1 setcmykcolor 10 10 moveto 50 50 lineto stroke",
     ),
-    "ohne_hintergrund.eps": ("", "0 0 0 1 setcmykcolor 10 10 50 50 rectfill\n"),
+    "hintergrund_teilflaeche.eps": ("", "0 0 0 1 setcmykcolor 10 10 50 50 rectfill\n"),
+    "ohne_flaeche.eps": ("", "0 0 0 1 setcmykcolor " + TEXT),
     "hintergrund_zu_klein.eps": ("", "0.2 0 0 0 setcmykcolor 0 0 150 100 rectfill\n" + TEXT),
     "hintergrund_bild.eps": ("", _image(100) + TEXT),
     "hintergrund_transparent.eps": (
