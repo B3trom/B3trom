@@ -106,6 +106,23 @@ class PruefungTest(unittest.TestCase):
         self.assertEqual(r.status, Status.OK)
 
 
+class OrdnerTest(unittest.TestCase):
+    def test_ordner_mit_und_ohne_unterordner(self):
+        from eps_pruefer.cli import collect_files
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "Seite_2").mkdir()
+            for name in ("b.eps", "A.EPS", "notiz.txt", "Seite_2/c.eps"):
+                (root / name).write_text("%!PS-Adobe-3.0 EPSF-3.0\n")
+            alle = [f.relative_to(root).as_posix() for f in collect_files([d])]
+            self.assertEqual(alle, ["A.EPS", "b.eps", "Seite_2/c.eps"])
+            flach = [f.name for f in collect_files([d], recursive=False)]
+            self.assertEqual(flach, ["A.EPS", "b.eps"])
+            einzeln = collect_files([str(root / "b.eps")])
+            self.assertEqual(einzeln, [root / "b.eps"])
+
+
 class EpsFileTest(unittest.TestCase):
     def test_bbox_atend_und_verknuepfungen(self):
         with tempfile.TemporaryDirectory() as d:

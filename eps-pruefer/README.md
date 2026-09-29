@@ -40,9 +40,19 @@ auch als Fehler werten lassen. Der dpi-Grenzwert ist dort ebenfalls einstellbar.
 ## Benutzung
 
 - **Doppelklick auf `start.bat`** öffnet das Programm.
-- EPS-Dateien oder ganze Ordner über die Schaltflächen hinzufügen. Man kann sie auch
-  im Explorer direkt **auf `start.bat` ziehen**, dann wird sofort geprüft.
-- **▶ Prüfen** startet die Prüfung. Grün heißt OK, gelb Warnung, rot Fehler.
+- **Was soll geprüft werden?**
+  - **Einzelne Dateien …** – gezielt eine oder mehrere EPS wählen (Strg-/Umschalt-Klick
+    im Dateidialog).
+  - **Ganzer Ordner / Projekt …** – alle EPS eines Ordners, mit Haken
+    **inkl. Unterordner** auch aus allen Unterordnern. Der Ordner erscheint als
+    Projekt-Knoten mit Sammelstatus (z. B. „✖ 1/6 OK“, je Prüfung die Zahl der
+    Dateien mit Befund). Ein Klick darauf zeigt die Projekt-Übersicht.
+  - Beides lässt sich mischen, auch mehrere Projekte gleichzeitig.
+  - Dateien oder Ordner kann man auch im Explorer **auf `start.bat` ziehen**, dann
+    wird sofort geprüft.
+- **▶ Alle prüfen** prüft die ganze Liste. **▶ Auswahl prüfen** prüft nur die
+  markierten Dateien bzw. Projekte, z. B. nach einer Korrektur nur die eine Datei.
+  Grün heißt OK, gelb Warnung, rot Fehler.
 - Ein Klick auf eine Zeile zeigt unten die Details mit Farbwerten und Positionen
   (in Punkt, vom Ursprung der EPS aus).
 - Ein Doppelklick öffnet den Ordner der Datei im Explorer.
@@ -57,6 +67,7 @@ Liste ziehen.
 ```bat
 pruefen_cli.bat "D:\Anzeigen\KW40" --html bericht.html --csv bericht.csv
 pruefen_cli.bat anzeige.eps --max-dpi 200 --rgb-fehler
+pruefen_cli.bat "D:\Anzeigen\KW40" --ohne-unterordner
 ```
 Bei Fehlern ist der Rückgabewert 1, sonst 0. Das eignet sich z. B. für Hotfolder-Skripte.
 

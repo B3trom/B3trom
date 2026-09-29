@@ -11,13 +11,20 @@ from .ghostscript import find_ghostscript
 from .report import text_report, write_csv, write_html
 
 
-def collect_files(paths: list[str]) -> list[Path]:
+EPS_SUFFIXES = (".eps", ".epsf", ".ai")
+
+
+def folder_files(folder: Path, recursive: bool = True) -> list[Path]:
+    """EPS-Dateien eines Ordners, sortiert nach Unterordner und Name."""
+    pattern = folder.rglob("*") if recursive else folder.glob("*")
+    files = [f for f in pattern if f.is_file() and f.suffix.lower() in EPS_SUFFIXES]
+    return sorted(files, key=lambda f: [part.lower() for part in f.relative_to(folder).parts])
+
+
+def collect_files(paths: list[str], recursive: bool = True) -> list[Path]:
     files: list[Path] = []
     for p in map(Path, paths):
-        if p.is_dir():
-            files += sorted(f for f in p.rglob("*") if f.is_file() and f.suffix.lower() in (".eps", ".epsf", ".ai"))
-        else:
-            files.append(p)
+        files += folder_files(p, recursive) if p.is_dir() else [p]
     return files
 
 
@@ -28,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-dpi", type=float, default=150.0)
     ap.add_argument("--rgb-fehler", action="store_true", help="alle RGB-Farben als Fehler werten")
     ap.add_argument("--grau-fehler", action="store_true", help="Graustufen-Schwarz als Fehler werten")
+    ap.add_argument("--ohne-unterordner", action="store_true", help="bei Ordnern keine Unterordner durchsuchen")
     ap.add_argument("--gs", help="Pfad zu gswin64c.exe / gs")
     ap.add_argument("--csv", help="CSV-Bericht schreiben")
     ap.add_argument("--html", help="HTML-Bericht schreiben")
@@ -39,7 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings(max_dpi=args.max_dpi, rgb_is_error=args.rgb_fehler,
                         gray_black_is_error=args.grau_fehler, gs_executable=gs or "")
 
-    results = [check_file(f, settings) for f in collect_files(args.pfade)]
+    results = [check_file(f, settings) for f in collect_files(args.pfade, not args.ohne_unterordner)]
     print(text_report(results))
     if args.csv:
         write_csv(results, args.csv)

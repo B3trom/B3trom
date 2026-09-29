@@ -4,12 +4,24 @@ from __future__ import annotations
 
 import csv
 import html
+import os
 from datetime import datetime
 from pathlib import Path
 
 from .checks import CHECK_TITLES, FileResult, Settings, Status
 
 CHECK_ORDER = list(CHECK_TITLES)
+
+
+def display_names(results: list[FileResult]) -> dict:
+    """Pfad relativ zum gemeinsamen Ordner (bei Projekten inkl. Unterordner)."""
+    if not results:
+        return {}
+    try:
+        base = os.path.commonpath([str(r.path.parent) for r in results])
+    except ValueError:  # verschiedene Laufwerke
+        return {r.path: r.path.name for r in results}
+    return {r.path: os.path.relpath(r.path, base) for r in results}
 
 
 def text_report(results: list[FileResult]) -> str:
@@ -57,6 +69,7 @@ ul{margin:4px 0 0 18px;padding:0;color:#555} li{margin:1px 0}
 
 def write_html(results: list[FileResult], path: str | Path, settings: Settings) -> None:
     e = html.escape
+    names = display_names(results)
     rows = []
     for r in results:
         cells = "".join(
@@ -65,7 +78,7 @@ def write_html(results: list[FileResult], path: str | Path, settings: Settings) 
             for k in CHECK_ORDER
         )
         rows.append(
-            f'<tr><td class="file">{e(r.path.name)}</td>'
+            f'<tr><td class="file">{e(names[r.path])}</td>'
             f'<td class="st s{int(r.status)}">{r.status.symbol} {e(r.status.label)}</td>{cells}</tr>'
         )
     head = "".join(f"<th>{e(CHECK_TITLES[k])}</th>" for k in CHECK_ORDER)
@@ -80,7 +93,7 @@ def write_html(results: list[FileResult], path: str | Path, settings: Settings) 
                 f"<td>{e(c.title)}</td><td>{e(c.message)}{f'<ul>{det}</ul>' if det else ''}</td></tr>"
             )
         sections.append(
-            f'<h2 class="s{int(r.status)}">{r.status.symbol} {e(r.path.name)}</h2>'
+            f'<h2 class="s{int(r.status)}">{r.status.symbol} {e(names[r.path])}</h2>'
             f'<div class="meta file">{e(str(r.path))}</div>'
             f"<table>{''.join(items)}</table>"
         )

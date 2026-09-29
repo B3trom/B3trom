@@ -14,7 +14,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from . import __version__
 from .checks import CHECK_TITLES, FileResult, Settings, Status, check_file
-from .cli import collect_files
+from .cli import folder_files
 from .ghostscript import find_ghostscript, ghostscript_version
 from .report import CHECK_ORDER, text_report, write_csv, write_html
 
@@ -77,6 +77,8 @@ class App:
         self.var_dpi = tk.DoubleVar(value=self.cfg.get("max_dpi", 150))
         self.var_rgb = tk.BooleanVar(value=self.cfg.get("rgb_is_error", False))
         self.var_gray = tk.BooleanVar(value=self.cfg.get("gray_black_is_error", False))
+        self.var_recursive = tk.BooleanVar(value=self.cfg.get("recursive", True))
+        self.run_files: list[Path] = []
         self.gs_path = find_ghostscript(self.cfg.get("gs_executable"))
         self.var_gs = tk.StringVar()
         self.var_status = tk.StringVar(value="Dateien hinzufügen und „Prüfen“ klicken.")
@@ -103,16 +105,31 @@ class App:
         style.configure("Treeview", rowheight=24)
         style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"))
 
-        bar = ttk.Frame(self.root, padding=(8, 8, 8, 4))
-        bar.pack(fill="x")
-        ttk.Button(bar, text="Dateien hinzufügen …", command=self.ask_files).pack(side="left")
-        ttk.Button(bar, text="Ordner hinzufügen …", command=self.ask_folder).pack(side="left", padx=4)
-        ttk.Button(bar, text="Entfernen", command=self.remove_selected).pack(side="left")
-        ttk.Button(bar, text="Liste leeren", command=self.clear).pack(side="left", padx=4)
-        self.btn_check = ttk.Button(bar, text="▶  Prüfen", style="Accent.TButton", command=self.start_check)
-        self.btn_check.pack(side="left", padx=(16, 4))
-        ttk.Button(bar, text="Bericht speichern …", command=self.save_report).pack(side="left")
-        ttk.Button(bar, text="?", width=3, command=self.show_help).pack(side="right")
+        top = ttk.Frame(self.root, padding=(8, 8, 8, 0))
+        top.pack(fill="x")
+
+        src = ttk.LabelFrame(top, text="Was soll geprüft werden?", padding=(8, 4))
+        src.pack(side="left", fill="y")
+        ttk.Button(src, text="Einzelne Dateien …", command=self.ask_files).grid(row=0, column=0)
+        ttk.Button(src, text="Ganzer Ordner / Projekt …", command=self.ask_folder).grid(
+            row=0, column=1, padx=(6, 0))
+        ttk.Checkbutton(src, text="inkl. Unterordner", variable=self.var_recursive).grid(
+            row=0, column=2, padx=(6, 12))
+        ttk.Button(src, text="Entfernen", command=self.remove_selected).grid(row=0, column=3)
+        ttk.Button(src, text="Liste leeren", command=self.clear).grid(row=0, column=4, padx=(6, 0))
+
+        run = ttk.LabelFrame(top, text="Prüfen", padding=(8, 4))
+        run.pack(side="left", fill="y", padx=8)
+        self.btn_check = ttk.Button(run, text="▶  Alle prüfen", style="Accent.TButton",
+                                    command=self.start_check)
+        self.btn_check.grid(row=0, column=0)
+        self.btn_check_sel = ttk.Button(run, text="▶  Auswahl prüfen",
+                                        command=lambda: self.start_check(selection_only=True))
+        self.btn_check_sel.grid(row=0, column=1, padx=(6, 0))
+        ttk.Button(run, text="Bericht speichern …", command=self.save_report).grid(
+            row=0, column=2, padx=(12, 0))
+
+        ttk.Button(top, text="?", width=3, command=self.show_help).pack(side="right", anchor="n", pady=(8, 0))
 
         opts = ttk.LabelFrame(self.root, text="Einstellungen", padding=(8, 4))
         opts.pack(fill="x", padx=8, pady=4)
@@ -135,7 +152,7 @@ class App:
         cols = ["gesamt"] + CHECK_ORDER
         self.tree = ttk.Treeview(table, columns=cols, selectmode="extended")
         self.tree.heading("#0", text="Datei", anchor="w")
-        self.tree.column("#0", width=280, stretch=True)
+        self.tree.column("#0", width=300, stretch=True)
         self.tree.heading("gesamt", text="Gesamt")
         self.tree.column("gesamt", width=90, anchor="center", stretch=False)
         for key in CHECK_ORDER:
@@ -143,6 +160,7 @@ class App:
             self.tree.column(key, width=118, anchor="center", stretch=False)
         for st, color in ROW_COLORS.items():
             self.tree.tag_configure(f"s{int(st)}", background=color)
+        self.tree.tag_configure("group", font=("Segoe UI", 10, "bold"))
         sb = ttk.Scrollbar(table, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
         self.tree.pack(side="left", fill="both", expand=True)
@@ -227,27 +245,73 @@ class App:
             self.cfg["gs_executable"] = path
             self._update_gs_label()
 
+    @staticmethod
+    def _group_iid(folder: Path) -> str:
+        return "dir:" + str(folder)
+
+    def _is_group(self, iid: str) -> bool:
+        return iid.startswith("dir:")
+
+    def _insert_file(self, f: Path, parent: str, label: str):
+        self.files.append(f)
+        self.tree.insert(parent, "end", iid=str(f), text=label,
+                         values=["offen"] + [""] * len(CHECK_ORDER))
+
     def add_paths(self, paths):
+        """Einzelne Dateien landen oben in der Liste, Ordner als Projekt-Knoten."""
         known = set(self.files)
-        added = 0
-        for f in collect_files(list(paths)):
-            f = f.resolve()
-            if f not in known:
-                self.files.append(f)
-                known.add(f)
-                self.tree.insert("", "end", iid=str(f), text=f.name,
-                                 values=["offen"] + [""] * len(CHECK_ORDER))
+        recursive = self.var_recursive.get()
+        added, empty = 0, []
+        for p in (Path(x).resolve() for x in paths):
+            if p.is_dir():
+                gid = self._group_iid(p)
+                if not self.tree.exists(gid):
+                    self.tree.insert("", "end", iid=gid, text=p.name or str(p), open=True,
+                                     values=["offen"] + [""] * len(CHECK_ORDER), tags=("group",))
+                for f in folder_files(p, recursive):
+                    rel = str(f.relative_to(p))
+                    f = f.resolve()
+                    if f not in known:
+                        known.add(f)
+                        self._insert_file(f, gid, rel)
+                        added += 1
+                if not self.tree.get_children(gid):
+                    self.tree.delete(gid)
+                    empty.append(str(p))
+                else:
+                    self._update_group(gid)
+            elif p not in known:
+                known.add(p)
+                self._insert_file(p, "", p.name)
                 added += 1
-        self.var_status.set(f"{added} Datei(en) hinzugefügt, {len(self.files)} in der Liste.")
+        msg = f"{added} Datei(en) hinzugefügt, {len(self.files)} in der Liste."
+        if empty:
+            msg += "  Keine EPS-Dateien in: " + ", ".join(empty)
+        self.var_status.set(msg)
+
+    def _files_of(self, iids) -> list[Path]:
+        """Dateien zu Listeneinträgen; ein Projekt-Knoten steht für alle seine Dateien."""
+        wanted: set[Path] = set()
+        for iid in iids:
+            if self._is_group(iid):
+                wanted.update(Path(c) for c in self.tree.get_children(iid))
+            else:
+                wanted.add(Path(iid))
+        return [f for f in self.files if f in wanted]  # Listenreihenfolge beibehalten
 
     def remove_selected(self):
         if self._busy():
             return
-        for iid in self.tree.selection():
-            p = Path(iid)
-            self.tree.delete(iid)
-            self.files.remove(p)
-            self.results.pop(p, None)
+        for f in self._files_of(self.tree.selection()):
+            parent = self.tree.parent(str(f))
+            self.tree.delete(str(f))
+            self.files.remove(f)
+            self.results.pop(f, None)
+            if parent and self.tree.exists(parent):
+                if self.tree.get_children(parent):
+                    self._update_group(parent)
+                else:
+                    self.tree.delete(parent)
         self.show_details()
 
     def clear(self):
@@ -264,13 +328,18 @@ class App:
         if not sel:
             return
         path = sel[0]
+        if self._is_group(path):
+            path = path[4:]
         try:
             if sys.platform == "win32":
-                subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
+                if os.path.isdir(path):
+                    os.startfile(path)  # type: ignore[attr-defined]
+                else:
+                    subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
             elif sys.platform == "darwin":
                 subprocess.Popen(["open", "-R", path])
             else:
-                subprocess.Popen(["xdg-open", os.path.dirname(path)])
+                subprocess.Popen(["xdg-open", path if os.path.isdir(path) else os.path.dirname(path)])
         except OSError:
             pass
 
@@ -286,23 +355,34 @@ class App:
         return Settings(max_dpi=dpi, rgb_is_error=self.var_rgb.get(),
                         gray_black_is_error=self.var_gray.get(), gs_executable=self.gs_path or "")
 
-    def start_check(self):
+    def start_check(self, selection_only: bool = False):
         if self._busy():
             self.cancel.set()
             self.var_status.set("Wird abgebrochen …")
             return
         if not self.files:
-            messagebox.showinfo(APP_TITLE, "Bitte zuerst EPS-Dateien oder einen Ordner hinzufügen.")
+            messagebox.showinfo(APP_TITLE, "Bitte zuerst einzelne EPS-Dateien oder einen Ordner hinzufügen.")
+            return
+        files = self._files_of(self.tree.selection()) if selection_only else list(self.files)
+        if not files:
+            messagebox.showinfo(APP_TITLE, "Bitte in der Liste zuerst Dateien oder einen Ordner markieren "
+                                           "(mehrere mit Strg- bzw. Umschalt-Klick).")
             return
         if not self.gs_path:
             self._warn_no_gs()
         settings = self._settings()
-        files = list(self.files)
+        self.run_files = files
         self.cancel.clear()
         self.progress.configure(maximum=len(files), value=0)
         self.btn_check.configure(text="■  Abbrechen")
+        self.btn_check_sel.state(["disabled"])
+        groups = set()
         for f in files:
+            self.results.pop(f, None)
             self.tree.item(str(f), values=["…"] + [""] * len(CHECK_ORDER), tags=())
+            groups.add(self.tree.parent(str(f)))
+        for gid in groups - {""}:
+            self._update_group(gid)
 
         def work():
             for i, f in enumerate(files):
@@ -328,7 +408,7 @@ class App:
             while True:
                 kind, i, payload = self.queue.get_nowait()
                 if kind == "progress":
-                    self.var_status.set(f"Prüfe {i + 1}/{len(self.files)}: {payload.name}")
+                    self.var_status.set(f"Prüfe {i + 1}/{len(self.run_files)}: {payload.name}")
                 elif kind == "result":
                     self._show_result(payload)
                     self.progress.configure(value=i + 1)
@@ -349,15 +429,39 @@ class App:
             c = res.check(key)
             vals.append(f"{c.status.symbol} {c.status.label}" if c else "")
         self.tree.item(iid, values=vals, tags=(f"s{int(res.status)}",))
+        parent = self.tree.parent(iid)
+        if parent:
+            self._update_group(parent)
         sel = self.tree.selection()
-        if not sel or sel[0] == iid:
-            if not sel:
-                self.tree.selection_set(iid)
+        if not sel:
+            self.tree.selection_set(iid)
+        elif sel[0] in (iid, parent):
             self.show_details()
 
+    def _update_group(self, gid: str):
+        """Sammelstatus eines Projekt-Knotens: je Prüfung die Zahl der Dateien mit Befund."""
+        files = [Path(c) for c in self.tree.get_children(gid)]
+        done = [self.results[f] for f in files if f in self.results]
+        name = Path(gid[4:]).name or gid[4:]
+        self.tree.item(gid, text=f"{name}   ({len(files)} Dateien)")
+        if not done:
+            self.tree.item(gid, values=["offen"] + [""] * len(CHECK_ORDER), tags=("group",))
+            return
+        worst = max(r.status for r in done)
+        n_ok = sum(1 for r in done if r.status <= Status.INFO)
+        vals = [f"{worst.symbol} {n_ok}/{len(files)} OK"]
+        for key in CHECK_ORDER:
+            stats = [c.status for r in done if (c := r.check(key))]
+            bad = sum(1 for st in stats if st >= Status.WARN)
+            top = max(stats, default=Status.INFO)
+            vals.append(f"{top.symbol} {bad}" if bad else (f"{top.symbol} OK" if stats else ""))
+        tags = ("group",) if len(done) < len(files) else ("group", f"s{int(worst)}")
+        self.tree.item(gid, values=vals, tags=tags)
+
     def _finished(self):
-        self.btn_check.configure(text="▶  Prüfen")
-        res = list(self.results.values())
+        self.btn_check.configure(text="▶  Alle prüfen")
+        self.btn_check_sel.state(["!disabled"])
+        res = [self.results[f] for f in self.run_files if f in self.results]
         ok = sum(1 for r in res if r.status <= Status.INFO)
         warn = sum(1 for r in res if r.status == Status.WARN)
         fail = sum(1 for r in res if r.status == Status.FAIL)
@@ -369,6 +473,10 @@ class App:
         self.text.configure(state="normal")
         self.text.delete("1.0", "end")
         sel = self.tree.selection()
+        if sel and self._is_group(sel[0]):
+            self._show_group_details(sel[0])
+            self.text.configure(state="disabled")
+            return
         res = self.results.get(Path(sel[0])) if sel else None
         if sel and res is None:
             self.text.insert("end", Path(sel[0]).name + "\n", "h1")
@@ -385,6 +493,47 @@ class App:
                     self.text.insert("end", "• " + d + "\n", "detail")
                 self.text.insert("end", "\n")
         self.text.configure(state="disabled")
+
+    def _show_group_details(self, gid: str):
+        folder = Path(gid[4:])
+        files = [Path(c) for c in self.tree.get_children(gid)]
+        done = [self.results[f] for f in files if f in self.results]
+        t = self.text
+        if done:
+            worst = max(r.status for r in done)
+            t.insert("end", f"{worst.symbol} ", f"c{int(worst)}")
+        t.insert("end", f"Projekt {folder.name}\n", "h1")
+        t.insert("end", str(folder) + "\n\n", "path")
+        ok = sum(1 for r in done if r.status <= Status.INFO)
+        warn = sum(1 for r in done if r.status == Status.WARN)
+        fail = sum(1 for r in done if r.status == Status.FAIL)
+        t.insert("end", f"{len(files)} EPS-Datei(en), {len(done)} geprüft:  ")
+        t.insert("end", f"{ok} OK", "c0")
+        t.insert("end", ",  ")
+        t.insert("end", f"{warn} mit Warnung", "c2")
+        t.insert("end", ",  ")
+        t.insert("end", f"{fail} fehlerhaft\n\n", "c3")
+        if not done:
+            t.insert("end", "Noch nicht geprüft – „Alle prüfen“ oder „Auswahl prüfen“ klicken.\n", "path")
+            return
+        for key in CHECK_ORDER:
+            stats = [c.status for r in done if (c := r.check(key))]
+            n_fail = stats.count(Status.FAIL)
+            n_warn = stats.count(Status.WARN)
+            top = max(stats, default=Status.OK)
+            t.insert("end", f"{top.symbol} ", f"c{int(top)}")
+            t.insert("end", CHECK_TITLES[key] + ": ", "title")
+            parts = ([f"{n_fail} Fehler"] if n_fail else []) + ([f"{n_warn} Warnung(en)"] if n_warn else [])
+            t.insert("end", (", ".join(parts) if parts else "alle OK") + "\n")
+        problems = [r for r in done if r.status >= Status.WARN]
+        if problems:
+            t.insert("end", "\nDateien mit Befund:\n", "title")
+            for r in sorted(problems, key=lambda r: -r.status):
+                t.insert("end", f"{r.status.symbol} ", f"c{int(r.status)}")
+                t.insert("end", f"{r.path.relative_to(folder)}\n")
+                for c in r.checks:
+                    if c.status >= Status.WARN:
+                        t.insert("end", f"• {c.title}: {c.message}\n", "detail")
 
     # --------------------------------------------------------------- Bericht
     def save_report(self):
@@ -431,6 +580,12 @@ class App:
             "• Hintergrundfläche – das unterste Objekt ist eine deckende "
             "Farbfläche (100 % Deckkraft), die die ganze BoundingBox abdeckt\n\n"
             "Zusätzlich: PostScript-Fehler und nicht eingebettete Schriften.\n\n"
+            "Auswahl:\n"
+            "• „Einzelne Dateien …“ fügt gezielt gewählte EPS hinzu.\n"
+            "• „Ganzer Ordner / Projekt …“ fügt alle EPS eines Ordners als Projekt "
+            "hinzu (wahlweise inkl. Unterordner) – mit Sammelstatus.\n"
+            "• „Alle prüfen“ prüft die ganze Liste, „Auswahl prüfen“ nur die markierten "
+            "Dateien bzw. Projekte.\n\n"
             "Doppelklick auf eine Zeile öffnet den Ordner der Datei.",
         )
 
@@ -440,6 +595,7 @@ class App:
             max_dpi=self._settings().max_dpi,
             rgb_is_error=self.var_rgb.get(),
             gray_black_is_error=self.var_gray.get(),
+            recursive=self.var_recursive.get(),
             geometry=self.root.geometry(),
         )
         if self.gs_path:
