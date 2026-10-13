@@ -69,6 +69,21 @@ auch als Fehler werten lassen. Mindest- und Höchst-dpi sind dort ebenfalls eins
   - Beides lässt sich mischen, auch mehrere Projekte gleichzeitig.
   - Dateien oder Ordner kann man auch im Explorer **auf `start.bat` ziehen**, dann
     wird sofort geprüft.
+- **Bereich ▾** (Kachel vor „Auswahl prüfen“) legt fest, welche Ordner eines Projekts
+  geprüft werden:
+
+  | Bereich | geprüft wird |
+  |---|---|
+  | **Intern** | Ordner *Anzeigensatz* – ohne Unterordner *Rollups* |
+  | **Extern** | Ordner *Arbeitsdaten* und *Freie Anzeigen* |
+  | **Produktion** | Ordner *Produktionsvorbereitung* |
+  | **Komplett** | der ganze Ordner inkl. aller Unterordner |
+
+  Die Ordner werden in jeder Tiefe des Projekts gefunden. Groß-/Kleinschreibung,
+  `_` und `-` sind egal, „Freie_Anzeigen“ zählt also auch. Wählt man direkt den
+  Ordner *Anzeigensatz* als Projekt, prüft „Intern“ dessen Inhalt. Einzeln
+  hinzugefügte Dateien werden unabhängig vom Bereich immer geprüft. Die Dateiliste,
+  die Kennzahlen, die Projektübersicht und der Bericht zeigen nur den gewählten Bereich.
 - **▶ Alle prüfen** prüft die ganze Liste. **▶ Auswahl prüfen** prüft nur die
   markierten Dateien bzw. Projekte, z. B. nach einer Korrektur nur die eine Datei.
   Grün heißt OK, gelb Warnung, rot Fehler.
@@ -87,6 +102,7 @@ Liste ziehen.
 pruefen_cli.bat "D:\Anzeigen\KW40" --html bericht.html --csv bericht.csv
 pruefen_cli.bat anzeige.eps --min-dpi 100 --max-dpi 200 --rgb-fehler
 pruefen_cli.bat "D:\Anzeigen\KW40" --ohne-unterordner
+pruefen_cli.bat "D:\Ausgaben\KW42" --bereich intern --html intern.html
 pruefen_cli.bat anzeige.eps --ohne schriften,hintergrund
 pruefen_cli.bat anzeige.eps --nur schwarz,aufloesung
 ```
@@ -149,6 +165,7 @@ Aufbau:
 | `eps_pruefer/epsfile.py` | EPS einlesen, DOS-Header, DSC-Kommentare, Verknüpfungen |
 | `eps_pruefer/analyzer.py` | Ghostscript-Aufruf und Auswertung des Protokolls |
 | `eps_pruefer/checks.py` | Prüfregeln und Grenzwerte |
+| `eps_pruefer/scopes.py` | Prüfbereiche Intern / Extern / Produktion / Komplett |
 | `eps_pruefer/gui2.py` | Oberfläche v2 (Kacheln, Hell/Dunkel, Prüfliste) |
 | `eps_pruefer/gui.py` | klassische Oberfläche v1 |
 | `eps_pruefer/report.py` | HTML-/CSV-/Text-Bericht |

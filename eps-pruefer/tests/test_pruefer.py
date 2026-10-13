@@ -137,6 +137,47 @@ class OrdnerTest(unittest.TestCase):
             self.assertEqual(einzeln, [root / "b.eps"])
 
 
+class BereichTest(unittest.TestCase):
+    STRUKTUR = (
+        "Anzeigensatz/a1.eps",
+        "Anzeigensatz/Seite_3/a2.eps",
+        "Anzeigensatz/Rollups/r1.eps",
+        "Anzeigensatz/Seite_3/Rollups/r2.eps",
+        "Arbeitsdaten/w1.eps",
+        "Freie Anzeigen/f1.eps",
+        "freie_anzeigen_alt/x.eps",
+        "Produktionsvorbereitung/p1.eps",
+        "Sonstiges/s1.eps",
+        "lose.eps",
+    )
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name) / "Ausgabe_42"
+        for rel in self.STRUKTUR:
+            (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / rel).write_text("%!PS-Adobe-3.0 EPSF-3.0\n")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def names(self, scope, root=None):
+        from eps_pruefer.cli import collect_files
+
+        return sorted(f.name for f in collect_files([str(root or self.root)], scope=scope))
+
+    def test_bereiche(self):
+        self.assertEqual(self.names("intern"), ["a1.eps", "a2.eps"])
+        self.assertEqual(self.names("extern"), ["f1.eps", "w1.eps"])
+        self.assertEqual(self.names("produktion"), ["p1.eps"])
+        self.assertEqual(len(self.names("komplett")), len(self.STRUKTUR))
+
+    def test_ordner_direkt_gewaehlt(self):
+        # wer direkt den Ordner "Anzeigensatz" wählt, bekommt bei "Intern" dessen Inhalt ohne Rollups
+        self.assertEqual(self.names("intern", self.root / "Anzeigensatz"), ["a1.eps", "a2.eps"])
+        self.assertEqual(self.names("extern", self.root / "Anzeigensatz"), [])
+
+
 class EpsFileTest(unittest.TestCase):
     def test_bbox_atend_und_verknuepfungen(self):
         with tempfile.TemporaryDirectory() as d:

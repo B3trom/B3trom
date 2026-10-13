@@ -24,6 +24,7 @@ from .cli import folder_files
 from .ghostscript import find_ghostscript, ghostscript_version
 from .gui import EPS_TYPES, load_config, save_config
 from .report import CHECK_ORDER, text_report, write_csv, write_html
+from .scopes import DEFAULT_SCOPE, SCOPES, filter_scope
 
 APP_TITLE = "EPS-Prüfer"
 FONT = "Segoe UI"
@@ -309,7 +310,8 @@ class App:
         self.var_max = tk.DoubleVar(value=self.cfg.get("max_dpi", 150))
         self.var_rgb = tk.BooleanVar(value=self.cfg.get("rgb_is_error", False))
         self.var_gray = tk.BooleanVar(value=self.cfg.get("gray_black_is_error", False))
-        self.var_recursive = tk.BooleanVar(value=self.cfg.get("recursive", True))
+        scope = self.cfg.get("scope", DEFAULT_SCOPE)
+        self.var_scope = tk.StringVar(value=scope if scope in SCOPES else DEFAULT_SCOPE)
         enabled = set(self.cfg.get("enabled", OPTIONAL_CHECKS))
         self.var_checks = {k: tk.BooleanVar(value=k in enabled) for k in OPTIONAL_CHECKS}
         self.gs_path = find_ghostscript(self.cfg.get("gs_executable"))
@@ -318,7 +320,7 @@ class App:
         self.selected: str | None = None
 
         root.title(f"{APP_TITLE} {__version__}")
-        root.geometry(self.cfg.get("geometry_v2", "1320x860"))
+        root.geometry(self.cfg.get("geometry_v2", "1440x880"))
         root.minsize(1060, 680)
         root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.build()
@@ -365,21 +367,34 @@ class App:
             tile.pack(side="right", padx=4)
             self.stat_tiles[key] = tile
 
-        # Kachelreihe: Aktionen + Kennzahlen
-        tiles = tk.Frame(self.root, bg=t.bg, padx=12)
-        tiles.pack(fill="x")
-        Tile(tiles, t, title="Einzelne Dateien", subtitle="EPS gezielt wählen", icon="＋",
-             command=self.ask_files).pack(side="left", padx=6)
-        Tile(tiles, t, title="Ordner / Projekt", subtitle="alle EPS im Ordner", icon="▤",
-             command=self.ask_folder).pack(side="left", padx=6)
-        self.tile_all = Tile(tiles, t, title="Alle prüfen", subtitle="Prüfung stoppen", icon="▶",
+        # Kachelreihe: Aktionen. Reicht die Breite nicht, brechen die Kacheln in eine
+        # zweite Zeile um (statt abgeschnitten zu werden).
+        self.tile_row = tk.Frame(self.root, bg=t.bg, height=84)
+        self.tile_row.pack(fill="x", padx=12)
+        row = self.tile_row
+        f_title = tkfont.Font(self.root, family=FONT, size=11, weight="bold")
+        f_sub = tkfont.Font(self.root, family=FONT, size=9)
+        # Breite nach dem längsten Bereichsnamen, damit die Kachel beim Umschalten nicht springt
+        scope_w = max(max(f_title.measure(f"Bereich: {sc.title}"), f_sub.measure(sc.description))
+                      for sc in SCOPES.values()) + 52 + 30
+        self.tile_all = Tile(row, t, title="Alle prüfen", subtitle="Prüfung stoppen", icon="▶",
                              command=self.start_check, primary=True)
-        self.tile_all.pack(side="left", padx=6)
-        self.tile_sel = Tile(tiles, t, title="Auswahl prüfen", subtitle="nur markierte", icon="▷",
+        self.tile_scope = Tile(row, t, title="Bereich", subtitle="", icon="▾",
+                               command=self._open_scope_menu, width=scope_w)
+        self.tile_sel = Tile(row, t, title="Auswahl prüfen", subtitle="nur markierte", icon="▷",
                              command=lambda: self.start_check(selection_only=True))
-        self.tile_sel.pack(side="left", padx=6)
-        Tile(tiles, t, title="Bericht speichern", subtitle="HTML · CSV · Text", icon="⤓",
-             command=self.save_report).pack(side="left", padx=6)
+        self.action_tiles = [
+            Tile(row, t, title="Einzelne Dateien", subtitle="EPS gezielt wählen", icon="＋",
+                 command=self.ask_files),
+            Tile(row, t, title="Ordner / Projekt", subtitle="ganzes Projekt", icon="▤",
+                 command=self.ask_folder),
+            self.tile_all,
+            self.tile_scope,
+            self.tile_sel,
+            Tile(row, t, title="Bericht", subtitle="HTML · CSV · Text", icon="⤓", command=self.save_report),
+        ]
+        self._show_scope_on_tile()
+        row.bind("<Configure>", lambda e: self._flow_tiles(e.width))
 
         # Hauptbereich
         main = tk.Frame(self.root, bg=t.bg, padx=18, pady=8)
@@ -412,6 +427,7 @@ class App:
         self.populate_tree()
         self._update_stats()
         self._update_active_label()
+        self._show_scope_on_tile()
         busy = self._busy()
         self._set_running(busy)
         if busy:
@@ -523,9 +539,9 @@ class App:
         ttk.Spinbox(dpi, from_=36, to=2400, width=5, textvariable=self.var_max).pack(side="left")
         tk.Label(dpi, text="  dpi", bg=t.surface, fg=t.text).pack(side="left")
 
-        label("ORDNER", 0, 2, padx=(24, 0))
-        ttk.Checkbutton(inner, text="inkl. Unterordner", variable=self.var_recursive).grid(
-            row=1, column=2, sticky="w", padx=(24, 0), pady=(2, 8))
+        label("PRÜFBEREICH", 0, 2, padx=(24, 0))
+        self.lbl_scope = tk.Label(inner, bg=t.surface, fg=t.text, font=(FONT, 10))
+        self.lbl_scope.grid(row=1, column=2, sticky="w", padx=(24, 0), pady=(2, 8))
 
         label("STRENGE", 2, 0, columnspan=3)
         ttk.Checkbutton(inner, text="Alle RGB-Farben/-Bilder als Fehler", variable=self.var_rgb).grid(
@@ -591,6 +607,20 @@ class App:
         if self.cl_canvas.winfo_exists():
             self.cl_canvas.configure(scrollregion=self.cl_canvas.bbox("all"))
 
+    def _flow_tiles(self, width: int):
+        """Kacheln von links nach rechts setzen, bei Platzmangel in die nächste Zeile."""
+        gap, x, y, row_h = 10, 0, 0, 0
+        for tile in self.action_tiles:
+            w, h = int(tile["width"]), int(tile["height"])
+            if x and x + w > width:
+                x, y = 0, y + row_h
+                row_h = 0
+            tile.place(x=x, y=y)
+            x += w + gap
+            row_h = max(row_h, h)
+        if int(self.tile_row["height"]) != y + row_h:
+            self.tile_row.configure(height=y + row_h)
+
     def _on_checklist_resize(self, e):
         self._debounce("resize", 120, lambda w=e.width: self._apply_width(w))
 
@@ -637,18 +667,64 @@ class App:
         self.tile_sel.set_enabled(not running)
 
     def _update_stats(self):
-        res = list(self.results.values())
-        self.stat_tiles["files"].update_value(str(len(self.all_files())))
+        files = self.all_files()
+        res = [self.results[f] for f in files if f in self.results]
+        self.stat_tiles["files"].update_value(str(len(files)))
         self.stat_tiles["ok"].update_value(str(sum(1 for r in res if r.status <= Status.INFO)))
         self.stat_tiles["warn"].update_value(str(sum(1 for r in res if r.status == Status.WARN)))
         self.stat_tiles["fail"].update_value(str(sum(1 for r in res if r.status == Status.FAIL)))
 
     # ----------------------------------------------------------------- Modell
+    def scoped(self, folder: Path) -> list[Path]:
+        """Dateien eines Projekts im gewählten Prüfbereich."""
+        return filter_scope(self.groups.get(folder, []), folder, self.var_scope.get())
+
     def all_files(self) -> list[Path]:
+        """Alle Dateien, die geprüft werden: Projekte im Bereich + einzelne Dateien."""
         files: list[Path] = []
         for kind, p in self.order:
-            files += self.groups[p] if kind == "g" else [p]
+            files += self.scoped(p) if kind == "g" else [p]
         return files
+
+    # --------------------------------------------------------------- Bereich
+    def _show_scope_on_tile(self):
+        sc = SCOPES[self.var_scope.get()]
+        self.tile_scope.update_title(f"Bereich: {sc.title}")
+        self.tile_scope.subtitle = sc.description
+        self.tile_scope.draw()
+        if hasattr(self, "lbl_scope") and self.lbl_scope.winfo_exists():
+            self.lbl_scope.configure(text=f"{sc.title} – {sc.description}")
+
+    def _open_scope_menu(self):
+        t = self.t
+        menu = tk.Menu(self.root, tearoff=False, bg=t.surface, fg=t.text, activebackground=t.accent,
+                       activeforeground=t.on_accent, selectcolor=t.accent, font=(FONT, 10),
+                       bd=1, relief="solid")
+        for sc in SCOPES.values():
+            menu.add_radiobutton(label=f"{sc.title}   –   {sc.description}", value=sc.key,
+                                 variable=self.var_scope, command=self._on_scope_change)
+        x = self.tile_scope.winfo_rootx() + 6
+        y = self.tile_scope.winfo_rooty() + self.tile_scope.winfo_height() - 8
+        try:
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def _on_scope_change(self):
+        if self._busy():  # während einer Prüfung nicht umschalten
+            self.var_scope.set(self.cfg.get("scope", DEFAULT_SCOPE))
+            return
+        self.cfg["scope"] = self.var_scope.get()
+        self._show_scope_on_tile()
+        if self.selected and not self.selected.startswith("dir:") and Path(self.selected) not in self.all_files():
+            self.selected = None
+        self.populate_tree()
+        self._update_stats()
+        sc = SCOPES[self.var_scope.get()]
+        n_groups = sum(1 for k, _ in self.order if k == "g")
+        if n_groups:
+            self.set_status(f"Bereich {sc.title}: {len(self.all_files())} Datei(en) werden geprüft "
+                            f"({sc.description}).")
 
     @staticmethod
     def _gid(folder: Path) -> str:
@@ -658,18 +734,18 @@ class App:
         wanted: set[Path] = set()
         for iid in iids:
             if iid.startswith("dir:"):
-                wanted.update(self.groups.get(Path(iid[4:]), []))
+                wanted.update(self.scoped(Path(iid[4:])))
             else:
                 wanted.add(Path(iid))
         return [f for f in self.all_files() if f in wanted]
 
     def add_paths(self, paths):
-        known = set(self.all_files())
+        known = {f for fs in self.groups.values() for f in fs} | {p for k, p in self.order if k == "f"}
         added, empty = 0, []
         for p in (Path(x).resolve() for x in paths):
             if p.is_dir():
                 new = []
-                for f in folder_files(p, self.var_recursive.get()):
+                for f in folder_files(p, recursive=True):  # Bereich filtert später
                     f = f.resolve()
                     if f not in known:
                         known.add(f)
@@ -688,7 +764,8 @@ class App:
                 added += 1
         self.populate_tree()
         self._update_stats()
-        msg = f"{added} Datei(en) hinzugefügt, {len(self.all_files())} in der Liste."
+        sc = SCOPES[self.var_scope.get()]
+        msg = f"{added} Datei(en) gefunden, {len(self.all_files())} im Bereich {sc.title}."
         if empty:
             msg += "  Keine EPS-Dateien in: " + ", ".join(empty)
         self.set_status(msg)
@@ -696,7 +773,11 @@ class App:
     def remove_selected(self):
         if self._busy():
             return
-        gone = set(self._files_of(self.tree.selection()))
+        sel = self.tree.selection()
+        gone = set(self._files_of(sel))
+        for iid in sel:  # markiertes Projekt: ganz entfernen, auch Dateien außerhalb des Bereichs
+            if iid.startswith("dir:"):
+                gone.update(self.groups.get(Path(iid[4:]), []))
         if not gone:
             return
         for folder in list(self.groups):
@@ -729,7 +810,7 @@ class App:
             if kind == "g":
                 gid = self._gid(p)
                 tree.insert("", "end", iid=gid, text=f"▤  {p.name or p}", open=True, tags=("group",))
-                for f in self.groups[p]:
+                for f in self.scoped(p):
                     tree.insert(gid, "end", iid=str(f), text=str(f.relative_to(p)))
                     self._refresh_row(f)
                 self._refresh_group(p)
@@ -767,10 +848,15 @@ class App:
         gid = self._gid(folder)
         if not self.tree.exists(gid):
             return
-        files = self.groups.get(folder, [])
+        files = self.scoped(folder)
         done = [self.results[f] for f in files if f in self.results]
+        total = len(self.groups.get(folder, []))
+        if not files:
+            self.tree.item(gid, values=("–  leer", f"keine Datei im Bereich (von {total})"), tags=("group",))
+            return
         if not done:
-            self.tree.item(gid, values=("○  offen", f"{len(files)} Dateien"), tags=("group",))
+            info = f"{len(files)} Dateien" + (f" (von {total})" if total != len(files) else "")
+            self.tree.item(gid, values=("○  offen", info), tags=("group",))
             return
         worst = max(r.status for r in done)
         n_ok = sum(1 for r in done if r.status <= Status.INFO)
@@ -926,14 +1012,17 @@ class App:
                                  None, [], key=key)
 
     def _checklist_group(self, folder: Path):
-        files = self.groups.get(folder, [])
+        files = self.scoped(folder)
         done = [self.results[f] for f in files if f in self.results]
         worst = max((r.status for r in done), default=None)
         n_ok = sum(1 for r in done if r.status <= Status.INFO)
         summary = (f"{len(done)} von {len(files)} geprüft · {n_ok} OK · "
                    f"{sum(1 for r in done if r.status == Status.WARN)} Warnung · "
                    f"{sum(1 for r in done if r.status == Status.FAIL)} Fehler") if done else "Noch nicht geprüft"
-        self._header(f"Projekt {folder.name}", f"{folder}  ·  {len(files)} EPS-Datei(en)", worst, summary)
+        sc = SCOPES[self.var_scope.get()]
+        self._header(f"Projekt {folder.name}",
+                     f"{folder}  ·  Bereich {sc.title}: {len(files)} von {len(self.groups.get(folder, []))} "
+                     f"EPS-Datei(en)", worst, summary)
         s = self._settings()
         for i, key in enumerate(CHECK_ORDER, 1):
             checks = [(r, c) for r in done if (c := r.check(key))]
@@ -1145,6 +1234,12 @@ class App:
             "(Warnung, wenn sie fehlt oder transparent ist)\n\n"
             "Bedienung:\n"
             "• „Einzelne Dateien“ oder „Ordner / Projekt“ hinzufügen\n"
+            "• „Bereich“ legt fest, welche Ordner eines Projekts geprüft werden:\n"
+            "    Intern – Anzeigensatz (ohne Rollups)\n"
+            "    Extern – Arbeitsdaten und Freie Anzeigen\n"
+            "    Produktion – Produktionsvorbereitung\n"
+            "    Kompletter Ordner – alles inkl. Unterordner\n"
+            "  Einzeln hinzugefügte Dateien werden immer geprüft.\n"
             "• „Alle prüfen“ oder nur die markierten Einträge mit „Auswahl prüfen“\n"
             "• Klick auf Datei/Projekt zeigt rechts die Prüfliste\n"
             "• ☾/☀ schaltet zwischen Dunkel- und Hellmodus um",
@@ -1154,7 +1249,7 @@ class App:
         self.cancel.set()
         s = self._settings()
         self.cfg.update(min_dpi=s.min_dpi, max_dpi=s.max_dpi, rgb_is_error=s.rgb_is_error,
-                        gray_black_is_error=s.gray_black_is_error, recursive=self.var_recursive.get(),
+                        gray_black_is_error=s.gray_black_is_error, scope=self.var_scope.get(),
                         theme=self.t.name, geometry_v2=self.root.geometry(),
                         enabled=sorted(s.enabled, key=OPTIONAL_CHECKS.index))
         if self.gs_path:

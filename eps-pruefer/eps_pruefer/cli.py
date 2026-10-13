@@ -9,6 +9,7 @@ from pathlib import Path
 from .checks import OPTIONAL_CHECKS, Settings, Status, check_file
 from .ghostscript import find_ghostscript
 from .report import text_report, write_csv, write_html
+from .scopes import DEFAULT_SCOPE, SCOPES, filter_scope
 
 
 EPS_SUFFIXES = (".eps", ".epsf", ".ai")
@@ -21,10 +22,14 @@ def folder_files(folder: Path, recursive: bool = True) -> list[Path]:
     return sorted(files, key=lambda f: [part.lower() for part in f.relative_to(folder).parts])
 
 
-def collect_files(paths: list[str], recursive: bool = True) -> list[Path]:
+def collect_files(paths: list[str], recursive: bool = True, scope: str = DEFAULT_SCOPE) -> list[Path]:
+    """Dateien bleiben, wie angegeben; Ordner werden nach dem Prüfbereich gefiltert."""
     files: list[Path] = []
     for p in map(Path, paths):
-        files += folder_files(p, recursive) if p.is_dir() else [p]
+        if p.is_dir():
+            files += filter_scope(folder_files(p, recursive or scope != DEFAULT_SCOPE), p, scope)
+        else:
+            files.append(p)
     return files
 
 
@@ -37,6 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rgb-fehler", action="store_true", help="alle RGB-Farben als Fehler werten")
     ap.add_argument("--grau-fehler", action="store_true", help="Graustufen-Schwarz als Fehler werten")
     ap.add_argument("--ohne-unterordner", action="store_true", help="bei Ordnern keine Unterordner durchsuchen")
+    ap.add_argument("--bereich", choices=list(SCOPES), default=DEFAULT_SCOPE,
+                    help="Prüfbereich bei Ordnern: " + "; ".join(f"{k} = {v.description}" for k, v in SCOPES.items()))
     kriterien = ", ".join(OPTIONAL_CHECKS)
     ap.add_argument("--nur", help=f"nur diese Kriterien prüfen, kommagetrennt ({kriterien})")
     ap.add_argument("--ohne", help=f"diese Kriterien nicht prüfen, kommagetrennt ({kriterien})")
@@ -63,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
                         gray_black_is_error=args.grau_fehler, gs_executable=gs or "",
                         enabled=frozenset(enabled))
 
-    results = [check_file(f, settings) for f in collect_files(args.pfade, not args.ohne_unterordner)]
+    results = [check_file(f, settings) for f in collect_files(args.pfade, not args.ohne_unterordner, args.bereich)]
     print(text_report(results))
     if args.csv:
         write_csv(results, args.csv)
