@@ -7,7 +7,7 @@ im Dateikopf aus.
 
 | Prüfung | Fehler, wenn … |
 |---|---|
-| **Schwarz in CMYK** | ein schwarzer Wert als RGB angelegt ist (R, G und B ≤ 20 %), in Flächen, Konturen, Texten, Mustern, Verläufen oder Strichbildern. Außerdem: die Datei stammt aus einem RGB-Dokument (Illustrator `%AI9_ColorModel`, Photoshop RGB-Modus) oder enthält **4c-Mischschwarz mit K unter 97 %** (z. B. C75 M68 Y67 K90 – so sieht umgerechnetes RGB-Schwarz aus; Warnung, bei „RGB als Fehler“ Fehler). Bewusstes Tiefschwarz mit K 100 % wird nicht gemeldet |
+| **Schwarz in CMYK** | ein schwarzer Wert als RGB angelegt ist (R, G und B ≤ 20 %), in Flächen, Konturen, Texten, Mustern, Verläufen oder Strichbildern. Außerdem: die Datei stammt aus einem RGB-Dokument (Illustrator `%AI9_ColorModel`, Photoshop RGB-Modus) oder enthält **umgerechnetes RGB-Schwarz**: 4c-Schwarz mit C, M, Y ab 50 % und K unter 97 % oder Farbauftrag ab 300 % (z. B. C75 M68 Y67 K90 oder C86 M85 Y79 K100). Bewusstes Tiefschwarz wie C60 M50 Y50 K100 (260 %) wird nicht gemeldet |
 | **Pixeldaten eingebettet** | die Datei Bilder nur verknüpft (OPI `%%ImageFileName`/`%ALDImageFileName`, DCS-Farbauszugsdateien, `%%IncludeFile`, `%%DocumentNeededFiles` …) |
 | **Schriften eingebettet** | eine verwendete Schrift nicht in der EPS enthalten ist (sie würde beim Ausgeben ersetzt) |
 | **Auflösung 80–150 dpi** | ein Bild eine effektive Auflösung unter 80 oder über 150 dpi hat (Pixel ÷ platzierte Größe, Skalierung und Drehung sind berücksichtigt; beide Grenzwerte einstellbar) |

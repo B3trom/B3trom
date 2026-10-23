@@ -141,15 +141,22 @@ def _is_black(model: str, color: list[float]) -> bool:
 # Einzelprüfungen
 # ---------------------------------------------------------------------------
 
-def _is_converted_black(model: str, color: list[float]) -> bool:
-    """4c-Mischschwarz, wie es beim Umrechnen von RGB-Schwarz entsteht (z. B. C75 M68 Y67 K90).
+# Ab diesem Gesamtfarbauftrag gilt 4c-Schwarz auch mit K 100 % als umgerechnetes RGB-Schwarz
+CONVERTED_BLACK_INK = 3.0
 
-    Bewusst angelegtes Tiefschwarz hat K = 100 % und wird nicht gemeldet.
+
+def _is_converted_black(model: str, color: list[float]) -> bool:
+    """4c-Mischschwarz, wie es beim Umrechnen von RGB-Schwarz entsteht.
+
+    Typisch: C75 M68 Y67 K90 oder C86 M85 Y79 K100 (Farbauftrag ~350 %). Bewusst
+    angelegtes Tiefschwarz (z. B. C60 M50 Y50 K100, 260 %) wird nicht gemeldet.
     """
     if model != "cmyk" or len(color) != 4:
         return False
     c, m, y, k = color
-    return min(c, m, y) >= 0.5 and 0.6 <= k < 0.97
+    if min(c, m, y) < 0.5 or k < 0.6:
+        return False
+    return k < 0.97 or c + m + y + k >= CONVERTED_BLACK_INK - 0.005
 
 
 def check_black(an: Analysis, s: Settings, info: EPSInfo | None = None) -> CheckResult:
@@ -164,7 +171,7 @@ def check_black(an: Analysis, s: Settings, info: EPSInfo | None = None) -> Check
             continue  # Glyphen-Zwischenspeicher einer Schrift: keine echte Farbe
         where = f"{ev.op}: {_fmt_color(ev)}{_fmt_box(ev)}"
         if _is_converted_black(model, ev.color):
-            converted.append(where)
+            converted.append(f"{where} – Farbauftrag {round(sum(ev.color) * 100)} %")
         elif _is_black(model, ev.color):
             (rgb_black if model == "rgb" else gray_black).append(where)
         elif model == "rgb":
@@ -196,8 +203,8 @@ def check_black(an: Analysis, s: Settings, info: EPSInfo | None = None) -> Check
         parts.insert(0, f"{rgb_doc} – Farben beim EPS-Export nach CMYK umgerechnet")
         details.insert(0, f"Dateikopf: {rgb_doc}. Illustrator rechnet RGB-Schwarz dabei in 4c-Mischschwarz um.")
     if converted:
-        status = max(status, Status.FAIL if (s.rgb_is_error or rgb_doc) else Status.WARN)
-        parts.append(f"{len(converted)}× 4c-Mischschwarz (typisch für umgerechnetes RGB-Schwarz)")
+        status = Status.FAIL  # umgerechnetes RGB-Schwarz ist ein Fehler, keine Geschmacksfrage
+        parts.append(f"{len(converted)}× umgerechnetes RGB-Schwarz (4c-Mischschwarz statt reinem K)")
         details += ["Mischschwarz statt reinem K – " + d for d in converted[:MAX_DETAILS]]
 
     message = ", ".join(parts) if parts else "Keine RGB- oder Graustufen-Schwarzwerte gefunden"

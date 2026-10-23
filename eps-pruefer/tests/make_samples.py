@@ -91,6 +91,8 @@ SAMPLES: dict[str, tuple[str, str]] = {
     # RGB-Schwarz beim Export nach CMYK umgerechnet (Illustrator-Standard)
     "schwarz_umgerechnet.eps": (
         "", EMBEDDED_FONT + BACKGROUND_CMYK + "0.75 0.68 0.67 0.9 setcmykcolor " + TEXT_EMBEDDED),
+    # umgerechnetes RGB-Schwarz mit K 100 % und ~350 % Farbauftrag (wie in einer echten Anzeige)
+    "schwarz_umgerechnet_k100.eps": ("", BACKGROUND_CMYK + "0.855 0.848 0.785 1 setcmykcolor 10 10 80 80 rectfill\n"),
     # bewusst angelegtes Tiefschwarz (K 100 %) – kein Befund
     "tiefschwarz.eps": ("", BACKGROUND_CMYK + "0.6 0.5 0.5 1 setcmykcolor 10 10 80 80 rectfill\n"),
     # Illustrator-Dokument im RGB-Modus, PostScript-Teil bereits CMYK
