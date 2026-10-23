@@ -20,7 +20,7 @@ from tkinter import font as tkfont
 
 from . import __version__
 from .checks import CHECK_TITLES, OPTIONAL_CHECKS, CheckResult, FileResult, Settings, Status, check_file
-from .cli import folder_files
+from .cli import scan_folder
 from .ghostscript import find_ghostscript, ghostscript_version
 from .gui import EPS_TYPES, load_config, save_config
 from .report import CHECK_ORDER, text_report, write_csv, write_html
@@ -743,17 +743,21 @@ class App:
 
     def add_paths(self, paths):
         known = {f for fs in self.groups.values() for f in fs} | {p for k, p in self.order if k == "f"}
-        added, empty = 0, []
+        added, empty, missing = 0, [], []
         # abspath statt resolve(): Laufwerksbuchstaben (Z:\…) bleiben erhalten
         for p in (Path(os.path.abspath(x)) for x in paths):
+            if not p.exists():
+                missing.append(str(p))
+                continue
             if p.is_dir():
                 new = []
-                for f in folder_files(p, recursive=True):  # Bereich filtert später
+                scan = scan_folder(p, recursive=True)  # Bereich filtert später
+                for f in scan.files:
                     if f not in known:
                         known.add(f)
                         new.append(f)
                 if not new and p not in self.groups:
-                    empty.append(str(p))
+                    empty.append((p, scan))
                     continue
                 if p not in self.groups:
                     self.groups[p] = []
@@ -773,8 +777,15 @@ class App:
         if hints:
             msg += "  " + "  ·  ".join(hints)
         if empty:
-            msg += "  Keine EPS-Dateien in: " + ", ".join(empty)
+            msg += "  Keine EPS-Dateien in: " + ", ".join(p.name for p, _ in empty)
         self.set_status(msg)
+        problems = [f"{p}\n→ {scan.summary()}" for p, scan in empty] + [f"{p}\n→ Pfad nicht erreichbar" for p in missing]
+        if problems:
+            messagebox.showwarning(
+                APP_TITLE,
+                "In diesem Ordner wurden keine EPS-Dateien gefunden:\n\n" + "\n\n".join(problems)
+                + "\n\nGesucht werden Dateien mit der Endung .eps, .epsf oder .ai "
+                  "(und EPS-Dateien ohne Endung).")
 
     def remove_selected(self):
         if self._busy():

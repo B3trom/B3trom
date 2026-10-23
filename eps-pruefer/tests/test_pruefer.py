@@ -190,6 +190,24 @@ class BereichTest(unittest.TestCase):
         self.assertEqual(self.names("extern", self.root / "01_Anzeigensatz"), [])
 
 
+class OrdnersucheTest(unittest.TestCase):
+    def test_diagnose_und_dateien_ohne_endung(self):
+        from eps_pruefer.cli import scan_folder
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "Anzeigen").mkdir()
+            (root / "Anzeigen" / "mac_ohne_endung").write_bytes(b"%!PS-Adobe-3.0 EPSF-3.0\n")
+            (root / "Anzeigen" / "notiz").write_bytes(b"kein EPS")
+            (root / "Anzeigen" / "heck.pdf").write_bytes(b"%PDF-1.4")
+            (root / "Anzeigen" / "._heck.eps").write_bytes(b"\x00")
+            scan = scan_folder(root)
+            self.assertEqual([f.name for f in scan.files], ["mac_ohne_endung"])
+            self.assertEqual(scan.other_types[".pdf"], 1)
+            self.assertIn("1× .pdf", scan.summary())
+            self.assertIn("nicht lesbar", scan_folder(root / "gibt_es_nicht").summary())
+
+
 class EpsFileTest(unittest.TestCase):
     def test_bbox_atend_und_verknuepfungen(self):
         with tempfile.TemporaryDirectory() as d:
