@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
 from .checks import OPTIONAL_CHECKS, Settings, Status, check_file
 from .ghostscript import find_ghostscript
 from .report import text_report, write_csv, write_html
+from .paths import long_path, short_path
 from .scopes import DEFAULT_SCOPE, SCOPES, filter_scope
 
 
@@ -16,9 +18,20 @@ EPS_SUFFIXES = (".eps", ".epsf", ".ai")
 
 
 def folder_files(folder: Path, recursive: bool = True) -> list[Path]:
-    """EPS-Dateien eines Ordners, sortiert nach Unterordner und Name."""
-    pattern = folder.rglob("*") if recursive else folder.glob("*")
-    files = [f for f in pattern if f.is_file() and f.suffix.lower() in EPS_SUFFIXES]
+    """EPS-Dateien eines Ordners, sortiert nach Unterordner und Name.
+
+    Unlesbare Unterordner werden übersprungen statt die Suche abzubrechen, und
+    Mac-Begleitdateien ("._name.eps" auf Netzlaufwerken) werden ignoriert.
+    """
+    files: list[Path] = []
+    start = long_path(folder)
+    for dirpath, dirnames, filenames in os.walk(start, onerror=lambda e: None):
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+        base = Path(short_path(dirpath))
+        files += [base / n for n in filenames
+                  if not n.startswith("._") and os.path.splitext(n)[1].lower() in EPS_SUFFIXES]
+        if not recursive:
+            break
     return sorted(files, key=lambda f: [part.lower() for part in f.relative_to(folder).parts])
 
 

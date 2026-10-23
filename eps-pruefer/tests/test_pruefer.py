@@ -139,14 +139,15 @@ class OrdnerTest(unittest.TestCase):
 
 class BereichTest(unittest.TestCase):
     STRUKTUR = (
-        "Anzeigensatz/a1.eps",
-        "Anzeigensatz/Seite_3/a2.eps",
-        "Anzeigensatz/Rollups/r1.eps",
-        "Anzeigensatz/Seite_3/Rollups/r2.eps",
-        "Arbeitsdaten/w1.eps",
-        "Freie Anzeigen/f1.eps",
-        "freie_anzeigen_alt/x.eps",
-        "Produktionsvorbereitung/p1.eps",
+        "01_Anzeigensatz/a1.eps",
+        "01_Anzeigensatz/Seite_3/a2.EPS",
+        "01_Anzeigensatz/Rollups/r1.eps",
+        "01_Anzeigensatz/Seite_3/Roll-ups KW42/r2.eps",
+        "01_Anzeigensatz/._a1.eps",  # Mac-Begleitdatei vom Netzlaufwerk
+        "02 - Arbeitsdaten/w1.eps",
+        "Freie Anzeigen 2026/f1.eps",
+        "Anzeigenarchiv/x.eps",  # enthält "Anzeigen…", ist aber kein gesuchter Ordner
+        "03_Produktionsvorbereitung/p1.eps",
         "Sonstiges/s1.eps",
         "lose.eps",
     )
@@ -167,15 +168,26 @@ class BereichTest(unittest.TestCase):
         return sorted(f.name for f in collect_files([str(root or self.root)], scope=scope))
 
     def test_bereiche(self):
-        self.assertEqual(self.names("intern"), ["a1.eps", "a2.eps"])
+        self.assertEqual(self.names("intern"), ["a1.eps", "a2.EPS"])
         self.assertEqual(self.names("extern"), ["f1.eps", "w1.eps"])
         self.assertEqual(self.names("produktion"), ["p1.eps"])
-        self.assertEqual(len(self.names("komplett")), len(self.STRUKTUR))
+        self.assertEqual(len(self.names("komplett")), len(self.STRUKTUR) - 1)  # ohne ._-Datei
+
+    def test_unterordner_von_anzeigensatz_gewaehlt(self):
+        # Pfad wie Z:\01_PROJEKTE\05_CAR\P26-…_Feld\Anzeigensatz\Anzeigen – gewählt wird "Anzeigen"
+        projekt = Path(self._tmp.name) / "P26-501113_Münchberg_ev. Kinder- und Jugendhilfe_Feld"
+        for rel in ("Anzeigensatz/Anzeigen/heck.eps", "Anzeigensatz/Anzeigen/Rollups/r.eps"):
+            (projekt / rel).parent.mkdir(parents=True, exist_ok=True)
+            (projekt / rel).write_text("%!PS-Adobe-3.0 EPSF-3.0\n")
+        anzeigen = projekt / "Anzeigensatz" / "Anzeigen"
+        self.assertEqual(self.names("intern", anzeigen), ["heck.eps"])
+        self.assertEqual(self.names("komplett", anzeigen), ["heck.eps", "r.eps"])
+        self.assertEqual(self.names("extern", anzeigen), [])
 
     def test_ordner_direkt_gewaehlt(self):
         # wer direkt den Ordner "Anzeigensatz" wählt, bekommt bei "Intern" dessen Inhalt ohne Rollups
-        self.assertEqual(self.names("intern", self.root / "Anzeigensatz"), ["a1.eps", "a2.eps"])
-        self.assertEqual(self.names("extern", self.root / "Anzeigensatz"), [])
+        self.assertEqual(self.names("intern", self.root / "01_Anzeigensatz"), ["a1.eps", "a2.EPS"])
+        self.assertEqual(self.names("extern", self.root / "01_Anzeigensatz"), [])
 
 
 class EpsFileTest(unittest.TestCase):

@@ -275,7 +275,7 @@ class App:
         known = set(self.files)
         recursive = self.var_recursive.get()
         added, empty = 0, []
-        for p in (Path(x).resolve() for x in paths):
+        for p in (Path(os.path.abspath(x)) for x in paths):
             if p.is_dir():
                 gid = self._group_iid(p)
                 if not self.tree.exists(gid):
@@ -283,7 +283,6 @@ class App:
                                      values=["offen"] + [""] * len(CHECK_ORDER), tags=("group",))
                 for f in folder_files(p, recursive):
                     rel = str(f.relative_to(p))
-                    f = f.resolve()
                     if f not in known:
                         known.add(f)
                         self._insert_file(f, gid, rel)

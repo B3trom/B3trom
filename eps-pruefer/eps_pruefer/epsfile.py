@@ -7,6 +7,8 @@ import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .paths import long_path
+
 DOS_EPS_MAGIC = b"\xc5\xd0\xd3\xc6"
 
 # Kommentare, die auf nicht eingebettete (verknüpfte) Daten hinweisen
@@ -95,7 +97,7 @@ def _parse_bbox(value: str) -> BBox | None:
 def read_eps(path: str | Path) -> EPSInfo:
     path = Path(path)
     try:
-        raw = path.read_bytes()
+        raw = Path(long_path(path)).read_bytes()
     except OSError as exc:
         raise EPSReadError(f"Datei kann nicht gelesen werden: {exc}") from exc
 

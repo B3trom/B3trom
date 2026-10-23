@@ -79,9 +79,13 @@ auch als Fehler werten lassen. Mindest- und Höchst-dpi sind dort ebenfalls eins
   | **Produktion** | Ordner *Produktionsvorbereitung* |
   | **Komplett** | der ganze Ordner inkl. aller Unterordner |
 
-  Die Ordner werden in jeder Tiefe des Projekts gefunden. Groß-/Kleinschreibung,
-  `_` und `-` sind egal, „Freie_Anzeigen“ zählt also auch. Wählt man direkt den
-  Ordner *Anzeigensatz* als Projekt, prüft „Intern“ dessen Inhalt. Einzeln
+  Die Ordner werden in jeder Tiefe gefunden. Der Begriff muss nur als Wort im
+  Ordnernamen vorkommen: `01_Anzeigensatz`, `Anzeigensatz KW42` und `02 - Arbeitsdaten`
+  passen also auch. Groß-/Kleinschreibung, `_` und `-` sind egal. Berücksichtigt werden
+  auch die Ordner **oberhalb** des gewählten Ordners: Wer direkt
+  `…\Anzeigensatz\Anzeigen` wählt, bekommt bei „Intern“ dessen Inhalt (ohne Rollups).
+  Findet ein Bereich nichts, nennt die Statuszeile die gefundenen Unterordner.
+  Einzeln
   hinzugefügte Dateien werden unabhängig vom Bereich immer geprüft. Die Dateiliste,
   die Kennzahlen, die Projektübersicht und der Bericht zeigen nur den gewählten Bereich.
 - **▶ Alle prüfen** prüft die ganze Liste. **▶ Auswahl prüfen** prüft nur die

@@ -20,7 +20,7 @@ SCOPES: dict[str, Scope] = {
     s.key: s
     for s in (
         Scope("intern", "Intern", "Anzeigensatz ohne Rollups",
-              include=("anzeigensatz",), exclude=("rollups", "rollup")),
+              include=("anzeigensatz",), exclude=("rollups", "rollup", "roll ups", "roll up")),
         Scope("extern", "Extern", "Arbeitsdaten + Freie Anzeigen",
               include=("arbeitsdaten", "freie anzeigen")),
         Scope("produktion", "Produktion", "Produktionsvorbereitung",
@@ -36,23 +36,44 @@ def _norm(name: str) -> str:
     return re.sub(r"[\s_\-]+", " ", name).strip().lower()
 
 
+def _contains(folder: str, keyword: str) -> bool:
+    """Kommt der Begriff als ganzes Wort im (normalisierten) Ordnernamen vor?
+
+    So passen auch "01_Anzeigensatz", "Anzeigensatz KW42" oder "02 - Arbeitsdaten".
+    """
+    return re.search(rf"(?<![a-z0-9äöüß]){re.escape(keyword)}(?![a-z0-9äöüß])", folder) is not None
+
+
 def in_scope(path: Path, root: Path, scope: Scope | str) -> bool:
     """Liegt `path` (Datei im Projekt `root`) im Prüfbereich?
 
-    Verglichen werden die Ordnernamen zwischen Projekt und Datei. Der Projektordner
-    selbst zählt mit – wer direkt den Ordner „Anzeigensatz“ wählt, bekommt bei
-    „Intern“ also dessen Inhalt (ohne Rollups).
+    Verglichen werden alle Ordnernamen im Pfad – auch die oberhalb des gewählten
+    Ordners. Wer also direkt „…\\Anzeigensatz\\Anzeigen“ wählt, bekommt bei „Intern“
+    dessen Inhalt (ohne Rollups).
     """
     scope = SCOPES[scope] if isinstance(scope, str) else scope
     try:
         rel_dirs = path.relative_to(root).parent.parts
     except ValueError:
         rel_dirs = path.parent.parts
-    folders = {_norm(p) for p in (root.name, *rel_dirs)}
-    if folders & set(scope.exclude):
+    above = [p for p in root.parts if p != root.anchor]  # gewählter Ordner + übergeordnete
+    folders = [_norm(p) for p in (*above, *rel_dirs)]
+    if any(_contains(f, kw) for f in folders for kw in scope.exclude):
         return False
-    return not scope.include or bool(folders & set(scope.include))
+    return not scope.include or any(_contains(f, kw) for f in folders for kw in scope.include)
 
 
 def filter_scope(files: list[Path], root: Path, scope: Scope | str) -> list[Path]:
     return [f for f in files if in_scope(f, root, scope)]
+
+
+def empty_scope_hint(files: list[Path], root: Path, scope: Scope | str) -> str:
+    """Erklärt, warum ein Bereich keine Dateien enthält (für die Statusmeldung)."""
+    scope = SCOPES[scope] if isinstance(scope, str) else scope
+    if not files:
+        return "keine EPS-Dateien im Ordner"
+    wanted = " oder ".join(f"„{kw.title()}“" for kw in scope.include) or "–"
+    folders = sorted({f.relative_to(root).parts[0] for f in files if len(f.relative_to(root).parts) > 1})
+    found = ", ".join(folders[:6]) + (" …" if len(folders) > 6 else "") if folders else "keine Unterordner"
+    return (f"0 von {len(files)} EPS im Bereich {scope.title} – gesucht wird ein Ordner {wanted} "
+            f"(gefunden: {found})")

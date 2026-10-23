@@ -24,7 +24,7 @@ from .cli import folder_files
 from .ghostscript import find_ghostscript, ghostscript_version
 from .gui import EPS_TYPES, load_config, save_config
 from .report import CHECK_ORDER, text_report, write_csv, write_html
-from .scopes import DEFAULT_SCOPE, SCOPES, filter_scope
+from .scopes import DEFAULT_SCOPE, SCOPES, empty_scope_hint, filter_scope
 
 APP_TITLE = "EPS-Prüfer"
 FONT = "Segoe UI"
@@ -723,8 +723,10 @@ class App:
         sc = SCOPES[self.var_scope.get()]
         n_groups = sum(1 for k, _ in self.order if k == "g")
         if n_groups:
-            self.set_status(f"Bereich {sc.title}: {len(self.all_files())} Datei(en) werden geprüft "
-                            f"({sc.description}).")
+            msg = f"Bereich {sc.title}: {len(self.all_files())} Datei(en) werden geprüft ({sc.description})."
+            hints = [f"{p.name}: {empty_scope_hint(self.groups[p], p, sc)}"
+                     for k, p in self.order if k == "g" and self.groups[p] and not self.scoped(p)]
+            self.set_status(msg + ("  " + "  ·  ".join(hints) if hints else ""))
 
     @staticmethod
     def _gid(folder: Path) -> str:
@@ -742,11 +744,11 @@ class App:
     def add_paths(self, paths):
         known = {f for fs in self.groups.values() for f in fs} | {p for k, p in self.order if k == "f"}
         added, empty = 0, []
-        for p in (Path(x).resolve() for x in paths):
+        # abspath statt resolve(): Laufwerksbuchstaben (Z:\…) bleiben erhalten
+        for p in (Path(os.path.abspath(x)) for x in paths):
             if p.is_dir():
                 new = []
                 for f in folder_files(p, recursive=True):  # Bereich filtert später
-                    f = f.resolve()
                     if f not in known:
                         known.add(f)
                         new.append(f)
@@ -766,6 +768,10 @@ class App:
         self._update_stats()
         sc = SCOPES[self.var_scope.get()]
         msg = f"{added} Datei(en) gefunden, {len(self.all_files())} im Bereich {sc.title}."
+        hints = [f"{p.name}: {empty_scope_hint(self.groups[p], p, sc)}"
+                 for k, p in self.order if k == "g" and self.groups[p] and not self.scoped(p)]
+        if hints:
+            msg += "  " + "  ·  ".join(hints)
         if empty:
             msg += "  Keine EPS-Dateien in: " + ", ".join(empty)
         self.set_status(msg)
@@ -1272,6 +1278,13 @@ def main(argv: list[str] | None = None) -> int:
         root = TkinterDnD.Tk()
     except ImportError:
         root = tk.Tk()
+    def show_error(exc_type, exc, tb):  # Fehler nicht stillschweigend verschlucken
+        import traceback
+
+        detail = "".join(traceback.format_exception(exc_type, exc, tb))[-1500:]
+        messagebox.showerror(APP_TITLE, f"Unerwarteter Fehler:\n{exc}\n\n{detail}")
+
+    root.report_callback_exception = show_error
     App(root, [a for a in (argv or []) if not a.startswith("-")])
     root.mainloop()
     return 0
