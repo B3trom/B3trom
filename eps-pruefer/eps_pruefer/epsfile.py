@@ -62,6 +62,7 @@ class EPSInfo:
     creator: str = ""
     title: str = ""
     links: list[str] = field(default_factory=list)
+    rgb_document: str = ""  # Hinweis, wenn die Ursprungsdatei im RGB-Modus angelegt war
 
     @property
     def effective_bbox(self) -> BBox | None:
@@ -146,6 +147,15 @@ def read_eps(path: str | Path) -> EPSInfo:
                     info.links.append(f"Benötigte externe Datei: {value[5:].strip()}")
             else:
                 info.links.append(f"Benötigte externe Datei: {value}")
+
+        # Farbmodus der Ursprungsdatei: Illustrator (%AI9_ColorModel: 1 = RGB) bzw.
+        # Photoshop (%ImageData: … Modus 3 = RGB)
+        if line.startswith("%AI9_ColorModel:") and line.split(":", 1)[1].strip() == "1":
+            info.rgb_document = "Illustrator-Dokument im RGB-Farbmodus"
+        elif line.startswith("%ImageData:"):
+            fields = line.split(":", 1)[1].split()
+            if len(fields) >= 4 and fields[3] == "3":
+                info.rgb_document = "Photoshop-Datei im RGB-Modus"
 
         if skip_depth:
             continue

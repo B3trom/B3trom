@@ -32,7 +32,7 @@ currentglobal true setglobal
   /npaint 0 def
   /nemit 0 def
   /nimg 0 def
-  /maxemit 3000 def
+  /maxemit 20000 def
   /maximg 5000 def
   /fonts 100 dict def
 end
@@ -127,13 +127,26 @@ setglobal
 } bind def
 
 % Soll eine Vektor-Malung ausgegeben werden? (Obergrenze gegen riesige Logs)
+% Farbe fuer die Pruefung interessant? Normales CMYK, helle Graustufen und Sonderfarben
+% nicht - sonst fuellen sie bei grossen Dateien das Protokoll, bevor RGB-Schwarz kommt.
+% CMYK nur als moeglicher Mischschwarz-Wert (C, M, Y >= 50 %, K >= 60 %).
+/@colorwanted { % -> bool
+  currentcolorspace 0 get
+  dup /DeviceCMYK eq {
+    pop currentcmykcolor 0.6 ge 4 1 roll 0.5 ge 4 1 roll 0.5 ge 4 1 roll 0.5 ge and and and
+  } {
+  dup /DeviceGray eq { pop currentgray 0.2 le } {
+    dup /Separation eq exch /DeviceN eq or not
+  } ifelse } ifelse
+} bind def
+
 /@wanted { % -> bool
   //@P begin
     depth 0 eq first and
     currentoverprint or
     //@falpha exec 1 lt or
     //@salpha exec 1 lt or
-    currentcolorspace 0 get /DeviceCMYK ne or
+    //@colorwanted exec or
     nemit maxemit lt and
     dup { /nemit nemit 1 add def } {
       depth 0 eq { /npaint npaint 1 add def /first false def } if

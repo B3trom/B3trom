@@ -141,16 +141,31 @@ def _is_black(model: str, color: list[float]) -> bool:
 # Einzelprüfungen
 # ---------------------------------------------------------------------------
 
-def check_black(an: Analysis, s: Settings) -> CheckResult:
-    rgb_black, gray_black, rgb_other, rgb_images = [], [], [], []
+def _is_converted_black(model: str, color: list[float]) -> bool:
+    """4c-Mischschwarz, wie es beim Umrechnen von RGB-Schwarz entsteht (z. B. C75 M68 Y67 K90).
+
+    Bewusst angelegtes Tiefschwarz hat K = 100 % und wird nicht gemeldet.
+    """
+    if model != "cmyk" or len(color) != 4:
+        return False
+    c, m, y, k = color
+    return min(c, m, y) >= 0.5 and 0.6 <= k < 0.97
+
+
+def check_black(an: Analysis, s: Settings, info: EPSInfo | None = None) -> CheckResult:
+    rgb_black, gray_black, rgb_other, rgb_images, converted = [], [], [], [], []
     for ev in an.events:
         model = _color_model(ev.cs_family, ev.cs_detail)
         if ev.kind == "IMAGE" and ev.op != "imagemask":
             if model == "rgb":
                 rgb_images.append(f"RGB-Bild {ev.width}×{ev.height} px{_fmt_box(ev)}")
             continue
+        if ev.nested and model == "rgb" and ev.color and len(ev.color) != 3:
+            continue  # Glyphen-Zwischenspeicher einer Schrift: keine echte Farbe
         where = f"{ev.op}: {_fmt_color(ev)}{_fmt_box(ev)}"
-        if _is_black(model, ev.color):
+        if _is_converted_black(model, ev.color):
+            converted.append(where)
+        elif _is_black(model, ev.color):
             (rgb_black if model == "rgb" else gray_black).append(where)
         elif model == "rgb":
             rgb_other.append(where)
@@ -174,6 +189,16 @@ def check_black(an: Analysis, s: Settings) -> CheckResult:
         status = max(status, Status.FAIL if s.rgb_is_error else Status.WARN)
         parts.append(f"{len(rgb_images)}× RGB-Bild")
         details += rgb_images[:MAX_DETAILS]
+    rgb_doc = info.rgb_document if info else ""
+    if rgb_doc:
+        # RGB-Ursprung: Schwarz wurde beim EPS-Export nach CMYK umgerechnet
+        status = Status.FAIL
+        parts.insert(0, f"{rgb_doc} – Farben beim EPS-Export nach CMYK umgerechnet")
+        details.insert(0, f"Dateikopf: {rgb_doc}. Illustrator rechnet RGB-Schwarz dabei in 4c-Mischschwarz um.")
+    if converted:
+        status = max(status, Status.FAIL if (s.rgb_is_error or rgb_doc) else Status.WARN)
+        parts.append(f"{len(converted)}× 4c-Mischschwarz (typisch für umgerechnetes RGB-Schwarz)")
+        details += ["Mischschwarz statt reinem K – " + d for d in converted[:MAX_DETAILS]]
 
     message = ", ".join(parts) if parts else "Keine RGB- oder Graustufen-Schwarzwerte gefunden"
     return CheckResult("schwarz", CHECK_TITLES["schwarz"], status, message, details)
@@ -355,7 +380,7 @@ def check_file(path: str | Path, settings: Settings) -> FileResult:
     result.checks.append(CheckResult("datei", CHECK_TITLES["datei"], status, message, file_details))
 
     checks = {
-        "schwarz": lambda: check_black(an, settings),
+        "schwarz": lambda: check_black(an, settings, info),
         "eingebettet": lambda: check_embedded(info, an),
         "schriften": lambda: check_fonts(an),
         "aufloesung": lambda: check_resolution(an, settings),

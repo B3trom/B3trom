@@ -49,7 +49,23 @@ class PruefungTest(unittest.TestCase):
     def test_rgb_schwarz_ist_fehler(self):
         self.assertEqual(self.status("rgb_schwarz.eps", "schwarz"), Status.FAIL)
 
-    def test_rgb_farbe_ist_warnung_oder_fehler(self):
+    def test_rgb_schwarz_nach_vielen_objekten(self):
+        # früher füllten Graustufen-Objekte das Protokoll, bevor das RGB-Schwarz kam
+        self.assertEqual(self.status("rgb_schwarz_spaet.eps", "schwarz"), Status.FAIL)
+
+    def test_umgerechnetes_rgb_schwarz(self):
+        self.assertEqual(self.status("schwarz_umgerechnet.eps", "schwarz"), Status.WARN)
+        strict = check_file(self.dir / "schwarz_umgerechnet.eps", Settings(gs_executable=GS, rgb_is_error=True))
+        self.assertEqual(strict.check("schwarz").status, Status.FAIL)
+        self.assertIn("Mischschwarz", strict.check("schwarz").message)
+        self.assertEqual(self.status("tiefschwarz.eps", "schwarz"), Status.OK)
+
+    def test_rgb_ursprungsdokument(self):
+        r = self.result("ai_rgb_dokument.eps")
+        self.assertEqual(r.check("schwarz").status, Status.FAIL)
+        self.assertIn("RGB-Farbmodus", r.check("schwarz").message)
+
+
         self.assertEqual(self.status("rgb_farbe.eps", "schwarz"), Status.WARN)
         strict = check_file(self.dir / "rgb_farbe.eps", Settings(gs_executable=GS, rgb_is_error=True))
         self.assertEqual(strict.check("schwarz").status, Status.FAIL)

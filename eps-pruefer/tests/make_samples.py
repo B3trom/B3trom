@@ -82,6 +82,19 @@ SAMPLES: dict[str, tuple[str, str]] = {
         "60 60 true [60 0 0 -60 0 60] {<" + "ff" * 450 + ">} imagemask grestore\n",
     ),
     "rgb_schwarz.eps": ("", BACKGROUND_CMYK + "0 0 0 setrgbcolor " + TEXT),
+    # sehr viele Graustufen-Objekte vor dem RGB-Schwarz (große Illustrator-Dateien)
+    "rgb_schwarz_spaet.eps": (
+        "",
+        EMBEDDED_FONT + BACKGROUND_CMYK + "0.5 setgray " + "1 1 1 1 rectfill " * 5000
+        + "\n0 0 0 setrgbcolor " + TEXT_EMBEDDED,
+    ),
+    # RGB-Schwarz beim Export nach CMYK umgerechnet (Illustrator-Standard)
+    "schwarz_umgerechnet.eps": (
+        "", EMBEDDED_FONT + BACKGROUND_CMYK + "0.75 0.68 0.67 0.9 setcmykcolor " + TEXT_EMBEDDED),
+    # bewusst angelegtes Tiefschwarz (K 100 %) – kein Befund
+    "tiefschwarz.eps": ("", BACKGROUND_CMYK + "0.6 0.5 0.5 1 setcmykcolor 10 10 80 80 rectfill\n"),
+    # Illustrator-Dokument im RGB-Modus, PostScript-Teil bereits CMYK
+    "ai_rgb_dokument.eps": ("%AI9_ColorModel: 1\n", BACKGROUND_CMYK + "0 0 0 1 setcmykcolor 10 10 50 50 rectfill\n"),
     "rgb_farbe.eps": ("", BACKGROUND_CMYK + "1 0 0 setrgbcolor 10 10 20 20 rectfill"),
     "grau_schwarz.eps": ("", BACKGROUND_CMYK + "0 setgray " + TEXT),
     "hochaufgeloest.eps": ("", BACKGROUND_CMYK + _image(300)),
