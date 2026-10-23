@@ -24,10 +24,24 @@ from .cli import scan_folder
 from .ghostscript import find_ghostscript, ghostscript_version
 from .gui import EPS_TYPES, load_config, save_config
 from .report import CHECK_ORDER, text_report, write_csv, write_html
-from .scopes import DEFAULT_SCOPE, SCOPES, empty_scope_hint, filter_scope
+from .scopes import DEFAULT_SCOPE, SCOPES, best_scope, empty_scope_hint, filter_scope
 
 APP_TITLE = "EPS-Prüfer"
 FONT = "Segoe UI"
+
+# Skalierung für Windows-Anzeigeeinstellungen (125 %, 150 % …); wird beim Start gesetzt.
+# Schriftgrößen in Punkt skaliert Tk selbst, Pixelmaße rechnen wir mit px() um.
+UI = 1.0
+
+
+def px(n: float) -> int:
+    return int(round(n * UI))
+
+
+def _fonts(master):
+    return (tkfont.Font(master, family=FONT, size=11, weight="bold"),
+            tkfont.Font(master, family=FONT, size=9),
+            tkfont.Font(master, family=FONT, size=20, weight="bold"))
 
 
 # ---------------------------------------------------------------------------
@@ -110,11 +124,17 @@ class Tile(tk.Canvas):
 
     def __init__(self, master, theme: Theme, *, title: str, subtitle: str = "", icon: str = "",
                  command=None, primary: bool = False, value: str = "", value_color: str | None = None,
-                 width: int | None = None, height: int = 84):
+                 width: int | None = None, height: int | None = None):
+        f_title, f_sub, f_value = _fonts(master)
+        self.f_title, self.f_sub, self.f_value = f_title, f_sub, f_value
         if width is None:  # Breite an die Beschriftung anpassen
-            w_title = tkfont.Font(master, family=FONT, size=11, weight="bold").measure(title)
-            w_sub = tkfont.Font(master, family=FONT, size=9).measure(subtitle)
-            width = max(w_title, w_sub) + (52 if icon else 16) + 30
+            if command is None:  # Kennzahl
+                width = max(f_sub.measure(title), f_value.measure("0000")) + px(40)
+            else:
+                width = max(f_title.measure(title), f_sub.measure(subtitle)) + px(52 if icon else 16) + px(30)
+        if height is None:  # Höhe aus Schrifthöhe, damit nichts gequetscht wird
+            first = f_value if command is None else f_title
+            height = first.metrics("linespace") + f_sub.metrics("linespace") + px(46)
         super().__init__(master, width=width, height=height, highlightthickness=0, bd=0, bg=theme.bg)
         self.t = theme
         self.title, self.subtitle, self.icon = title, subtitle, icon
@@ -174,10 +194,10 @@ class Tile(tk.Canvas):
         w, h = self.winfo_width(), self.winfo_height()
         if w < 20 or h < 20:
             return
-        lift = {"normal": 0, "hover": -2, "pressed": 2}[self.state_]
-        depth = {"normal": 6, "hover": 9, "pressed": 2}[self.state_]
-        x1, y1, x2, y2 = 6, 4 + lift, w - 6, h - 12 + lift
-        r = self.RADIUS
+        lift = px({"normal": 0, "hover": -2, "pressed": 2}[self.state_])
+        depth = px({"normal": 6, "hover": 9, "pressed": 2}[self.state_])
+        x1, y1, x2, y2 = px(6), px(4) + lift, w - px(6), h - px(12) + lift
+        r = px(self.RADIUS)
         strength = 0.55 if t.name == "dark" else 0.35
 
         # weicher Schatten: von außen (hell) nach innen (dunkel)
@@ -202,27 +222,33 @@ class Tile(tk.Canvas):
         self.create_line(x1 + r * 0.7, y1 + 1.5, x2 - r * 0.7, y1 + 1.5, fill=light, width=1)
 
         cy = (y1 + y2) / 2
+        ls = self.f_sub.metrics("linespace")
         if self.command is None:  # Kennzahl-Kachel
-            self.create_text(x1 + 16, cy - 9, text=self.value, anchor="w",
-                             font=(FONT, 20, "bold"), fill=self.value_color or t.text)
-            self.create_text(x1 + 16, cy + 16, text=self.title, anchor="w",
-                             font=(FONT, 9), fill=t.muted)
+            lv = self.f_value.metrics("linespace")
+            top = cy - (lv + ls) / 2
+            self.create_text(x1 + px(16), top + lv / 2, text=self.value, anchor="w",
+                             font=self.f_value, fill=self.value_color or t.text)
+            self.create_text(x1 + px(16), top + lv + ls / 2, text=self.title, anchor="w",
+                             font=self.f_sub, fill=t.muted)
             return
-        tx = x1 + 16
+        tx = x1 + px(16)
         if self.icon:
-            self.create_text(x1 + 26, cy, text=self.icon, font=(FONT, 20), fill=icon_fg)
-            tx = x1 + 52
+            self.create_text(x1 + px(26), cy, text=self.icon, font=(FONT, 20), fill=icon_fg)
+            tx = x1 + px(52)
         if self.subtitle:
-            self.create_text(tx, cy - 9, text=self.title, anchor="w", font=(FONT, 11, "bold"), fill=fg)
-            self.create_text(tx, cy + 11, text=self.subtitle, anchor="w", font=(FONT, 9), fill=sub)
+            lt = self.f_title.metrics("linespace")
+            top = cy - (lt + ls) / 2
+            self.create_text(tx, top + lt / 2, text=self.title, anchor="w", font=self.f_title, fill=fg)
+            self.create_text(tx, top + lt + ls / 2, text=self.subtitle, anchor="w", font=self.f_sub, fill=sub)
         else:
-            self.create_text(tx, cy, text=self.title, anchor="w", font=(FONT, 11, "bold"), fill=fg)
+            self.create_text(tx, cy, text=self.title, anchor="w", font=self.f_title, fill=fg)
 
 
 class Badge(tk.Canvas):
     """Runder Status-Knopf mit Symbol und leichtem Glanz."""
 
     def __init__(self, master, theme: Theme, status: Status | None, bg: str, size: int = 30):
+        size = px(size)
         super().__init__(master, width=size, height=size, highlightthickness=0, bd=0, bg=bg)
         s = size
         if status is None:  # noch nicht geprüft: schlichter Ring
@@ -233,15 +259,15 @@ class Badge(tk.Canvas):
         self.create_oval(2, 1, s - 2, s - 3, fill=col, outline="")
         self.create_oval(6, 3, s - 6, s / 2 - 1, fill=mix(col, "#ffffff", 0.25), outline="")
         self.create_text(s / 2, s / 2 - 1, text=STATUS_GLYPH[status], fill="#ffffff",
-                         font=(FONT, int(s * 0.42), "bold"))
+                         font=(FONT, max(7, int(s * 0.42 / UI * 0.75)), "bold"))
 
 
 class Switch(tk.Canvas):
     """Ein/Aus-Schalter mit Schiebeknopf."""
 
     def __init__(self, master, theme: Theme, var: tk.BooleanVar, command=None, bg: str | None = None):
-        super().__init__(master, width=46, height=26, highlightthickness=0, bd=0, bg=bg or theme.surface,
-                         cursor="hand2")
+        super().__init__(master, width=px(46), height=px(26), highlightthickness=0, bd=0,
+                         bg=bg or theme.surface, cursor="hand2")
         self.t, self.var, self.command = theme, var, command
         self.bind("<Button-1>", self._toggle)
         self.draw()
@@ -256,11 +282,11 @@ class Switch(tk.Canvas):
         t, on = self.t, self.var.get()
         self.delete("all")
         track = t.accent if on else mix(t.surface2, t.border, 0.7)
-        round_rect(self, 2, 4, 44, 24, 10, fill=mix(track, "#000000", 0.15), outline="")
-        round_rect(self, 2, 3, 44, 23, 10, fill=track, outline="")
-        x = 33 if on else 13
-        self.create_oval(x - 9, 5, x + 9, 23, fill=mix("#000000", track, 0.6), outline="")
-        self.create_oval(x - 9, 4, x + 9, 22, fill="#ffffff", outline="")
+        round_rect(self, px(2), px(4), px(44), px(24), px(10), fill=mix(track, "#000000", 0.15), outline="")
+        round_rect(self, px(2), px(3), px(44), px(23), px(10), fill=track, outline="")
+        x = px(33 if on else 13)
+        self.create_oval(x - px(9), px(5), x + px(9), px(23), fill=mix("#000000", track, 0.6), outline="")
+        self.create_oval(x - px(9), px(4), x + px(9), px(22), fill="#ffffff", outline="")
 
 
 def card(parent, t: Theme, stripe: str | None = None, pad=(14, 10)):
@@ -320,8 +346,12 @@ class App:
         self.selected: str | None = None
 
         root.title(f"{APP_TITLE} {__version__}")
-        root.geometry(self.cfg.get("geometry_v2", "1440x880"))
-        root.minsize(1060, 680)
+        global UI
+        UI = max(1.0, root.winfo_fpixels("1i") / 96.0)
+        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+        default = f"{min(px(1440), sw - 40)}x{min(px(880), sh - 80)}"
+        root.geometry(self.cfg.get("geometry_v2", default))
+        root.minsize(min(px(1060), sw - 40), min(px(640), sh - 80))
         root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.build()
         self._enable_drop()
@@ -345,38 +375,38 @@ class App:
         # Kopfzeile
         head = tk.Frame(self.root, bg=t.bg, padx=18, pady=8)
         head.pack(fill="x")
-        logo = tk.Canvas(head, width=40, height=40, bg=t.bg, highlightthickness=0)
+        logo = tk.Canvas(head, width=px(40), height=px(40), bg=t.bg, highlightthickness=0)
         logo.pack(side="left")
-        round_rect(logo, 2, 4, 38, 40, 10, fill=mix(t.bg, t.shadow, 0.3), outline="")
-        round_rect(logo, 2, 2, 38, 37, 10, fill=t.accent, outline="")
-        logo.create_text(20, 19, text="EPS", fill=t.on_accent, font=(FONT, 10, "bold"))
+        round_rect(logo, px(2), px(4), px(38), px(40), px(10), fill=mix(t.bg, t.shadow, 0.3), outline="")
+        round_rect(logo, px(2), px(2), px(38), px(37), px(10), fill=t.accent, outline="")
+        logo.create_text(px(20), px(19), text="EPS", fill=t.on_accent, font=(FONT, 10, "bold"))
         titles = tk.Frame(head, bg=t.bg)
         titles.pack(side="left", padx=12)
         tk.Label(titles, text="EPS-Prüfer", font=(FONT, 17, "bold"), bg=t.bg, fg=t.text).pack(anchor="w")
         tk.Label(titles, text="Druckproduktion & Anzeigensatz", font=(FONT, 9), bg=t.bg,
                  fg=t.muted).pack(anchor="w")
-        Tile(head, t, title="Hilfe", icon="?", command=self.show_help, height=78).pack(side="right")
+        Tile(head, t, title="Hilfe", icon="?", command=self.show_help).pack(side="right")
         dark = t.name == "dark"
         Tile(head, t, title="Hell" if dark else "Dunkel", icon="☀" if dark else "☾",
-             command=self.toggle_theme, height=78).pack(side="right", padx=(8, 0))
+             command=self.toggle_theme).pack(side="right", padx=(8, 0))
         tk.Frame(head, bg=t.bg, width=24).pack(side="right")
         self.stat_tiles = {}
         for key, label, color in (("fail", "Fehler", t.fail), ("warn", "Warnungen", t.warn),
                                   ("ok", "OK", t.ok), ("files", "Dateien", t.text)):
-            tile = Tile(head, t, title=label, value="0", value_color=color, width=108, height=78)
+            tile = Tile(head, t, title=label, value="0", value_color=color)
             tile.pack(side="right", padx=4)
             self.stat_tiles[key] = tile
 
         # Kachelreihe: Aktionen. Reicht die Breite nicht, brechen die Kacheln in eine
         # zweite Zeile um (statt abgeschnitten zu werden).
-        self.tile_row = tk.Frame(self.root, bg=t.bg, height=84)
+        self.tile_row = tk.Frame(self.root, bg=t.bg, height=px(84))
         self.tile_row.pack(fill="x", padx=12)
         row = self.tile_row
         f_title = tkfont.Font(self.root, family=FONT, size=11, weight="bold")
         f_sub = tkfont.Font(self.root, family=FONT, size=9)
         # Breite nach dem längsten Bereichsnamen, damit die Kachel beim Umschalten nicht springt
         scope_w = max(max(f_title.measure(f"Bereich: {sc.title}"), f_sub.measure(sc.description))
-                      for sc in SCOPES.values()) + 52 + 30
+                      for sc in SCOPES.values()) + px(52) + px(30)
         self.tile_all = Tile(row, t, title="Alle prüfen", subtitle="Prüfung stoppen", icon="▶",
                              command=self.start_check, primary=True)
         self.tile_scope = Tile(row, t, title="Bereich", subtitle="", icon="▾",
@@ -396,13 +426,24 @@ class App:
         self._show_scope_on_tile()
         row.bind("<Configure>", lambda e: self._flow_tiles(e.width))
 
+        # Statuszeile – vor dem Hauptbereich unten angedockt, damit sie bei jeder
+        # Fenstergröße und Windows-Skalierung sichtbar bleibt
+        foot = tk.Frame(self.root, bg=t.bg, padx=18, pady=8)
+        foot.pack(side="bottom", fill="x")
+        self.progress = ttk.Progressbar(foot, style="Tile.Horizontal.TProgressbar", length=px(260),
+                                        mode="determinate")
+        self.progress.pack(side="right", padx=(12, 0))
+        self.lbl_status = tk.Label(foot, text=self.status_text, bg=t.bg, fg=t.muted, font=(FONT, 9),
+                                   anchor="w", justify="left", wraplength=px(1100))
+        self.lbl_status.pack(side="left", fill="x", expand=True)
+
         # Hauptbereich
         main = tk.Frame(self.root, bg=t.bg, padx=18, pady=8)
         main.pack(fill="both", expand=True)
         # Nur die Dateiliste wächst mit; die Prüfliste hat eine feste Breite und muss beim
         # Ziehen am Fensterrand nicht ständig neu umbrechen.
         main.columnconfigure(0, weight=1)
-        main.columnconfigure(1, weight=0, minsize=560)
+        main.columnconfigure(1, weight=0, minsize=px(560))
         main.rowconfigure(0, weight=1)
 
         left = tk.Frame(main, bg=t.bg)
@@ -410,19 +451,10 @@ class App:
         self._build_filelist(left)
         self._build_settings(left)
 
-        right = tk.Frame(main, bg=t.bg, width=560)
+        right = tk.Frame(main, bg=t.bg, width=px(560))
         right.pack_propagate(False)  # feste Breite, Inhalt bestimmt sie nicht
         right.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
         self._build_checklist(right)
-
-        # Statuszeile
-        foot = tk.Frame(self.root, bg=t.bg, padx=18, pady=10)
-        foot.pack(fill="x")
-        self.progress = ttk.Progressbar(foot, style="Tile.Horizontal.TProgressbar", length=260,
-                                        mode="determinate")
-        self.progress.pack(side="right")
-        self.lbl_status = tk.Label(foot, text=self.status_text, bg=t.bg, fg=t.muted, font=(FONT, 9))
-        self.lbl_status.pack(side="left")
 
         self.populate_tree()
         self._update_stats()
@@ -441,7 +473,7 @@ class App:
                      bordercolor=t.border, lightcolor=t.surface, darkcolor=t.surface,
                      troughcolor=t.surface2, focuscolor=t.accent)
         st.configure("Treeview", background=t.surface, fieldbackground=t.surface, foreground=t.text,
-                     rowheight=30, borderwidth=0, font=(FONT, 10))
+                     rowheight=px(30), borderwidth=0, font=(FONT, 10))
         st.map("Treeview", background=[("selected", mix(t.surface, t.accent, 0.28))],
                foreground=[("selected", t.text)])
         st.configure("Treeview.Heading", background=t.surface2, foreground=t.muted, relief="flat",
@@ -497,17 +529,19 @@ class App:
 
         outer, inner = card(parent, t, pad=(2, 2))
         outer.pack(fill="both", expand=True)
-        self.tree = ttk.Treeview(inner, columns=("ergebnis", "befund"), selectmode="extended")
+        # height klein halten: bei wenig Platz schrumpft die Liste, nicht die Einstellungen
+        self.tree = ttk.Treeview(inner, columns=("ergebnis", "befund"), selectmode="extended", height=4)
         self.tree.heading("#0", text="DATEI", anchor="w")
         self.tree.heading("ergebnis", text="ERGEBNIS", anchor="w")
         self.tree.heading("befund", text="BEFUNDE", anchor="w")
-        self.tree.column("#0", width=240, stretch=True)
-        self.tree.column("ergebnis", width=105, stretch=False)
-        self.tree.column("befund", width=235, stretch=False)
+        self.tree.column("#0", width=px(240), stretch=True)
+        self.tree.column("ergebnis", width=px(105), stretch=False)
+        self.tree.column("befund", width=px(260), stretch=False)
         for st in Status:
             self.tree.tag_configure(f"s{int(st)}", background=mix(t.surface, status_color(t, st), 0.10),
                                     foreground=t.text)
         self.tree.tag_configure("group", font=(FONT, 10, "bold"))
+        self.tree.tag_configure("hint", foreground=t.warn, font=(FONT, 10, "italic"))
         sb = ttk.Scrollbar(inner, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
         self.tree.pack(side="left", fill="both", expand=True)
@@ -609,7 +643,7 @@ class App:
 
     def _flow_tiles(self, width: int):
         """Kacheln von links nach rechts setzen, bei Platzmangel in die nächste Zeile."""
-        gap, x, y, row_h = 10, 0, 0, 0
+        gap, x, y, row_h = px(10), 0, 0, 0
         for tile in self.action_tiles:
             w, h = int(tile["width"]), int(tile["height"])
             if x and x + w > width:
@@ -628,7 +662,7 @@ class App:
         if not self.cl_canvas.winfo_exists():
             return
         self.cl_canvas.itemconfigure(self.cl_window, width=width)
-        wrap = max(200, width - 110)
+        wrap = max(px(200), width - px(110))
         if wrap == self._wrap_width:
             return
         self._wrap_width = wrap
@@ -710,6 +744,25 @@ class App:
         finally:
             menu.grab_release()
 
+    def _offer_scope(self, folders: list[Path]):
+        """Liegen alle Dateien eines neuen Projekts außerhalb des Bereichs: passenden Bereich anbieten."""
+        cur = self.var_scope.get()
+        for folder in folders:
+            files = self.groups.get(folder, [])
+            if not files or self.scoped(folder):
+                continue
+            best, n = best_scope(files, folder, cur)
+            if messagebox.askyesno(
+                APP_TITLE,
+                f"Im Ordner „{folder.name}“ wurden {len(files)} EPS-Dateien gefunden – im gewählten "
+                f"Bereich „{SCOPES[cur].title}“ ({SCOPES[cur].description}) liegt aber keine davon.\n\n"
+                f"Die Dateien gehören zum Bereich „{SCOPES[best].title}“ ({n} Dateien).\n\n"
+                f"Zum Bereich „{SCOPES[best].title}“ wechseln?",
+            ):
+                self.var_scope.set(best)
+                self._on_scope_change()
+            return
+
     def _on_scope_change(self):
         if self._busy():  # während einer Prüfung nicht umschalten
             self.var_scope.set(self.cfg.get("scope", DEFAULT_SCOPE))
@@ -735,6 +788,8 @@ class App:
     def _files_of(self, iids) -> list[Path]:
         wanted: set[Path] = set()
         for iid in iids:
+            if iid.startswith("hint:"):
+                continue
             if iid.startswith("dir:"):
                 wanted.update(self.scoped(Path(iid[4:])))
             else:
@@ -779,6 +834,7 @@ class App:
         if empty:
             msg += "  Keine EPS-Dateien in: " + ", ".join(p.name for p, _ in empty)
         self.set_status(msg)
+        self._offer_scope([p for p in (Path(os.path.abspath(x)) for x in paths) if p in self.groups])
         problems = [f"{p}\n→ {scan.summary()}" for p, scan in empty] + [f"{p}\n→ Pfad nicht erreichbar" for p in missing]
         if problems:
             messagebox.showwarning(
@@ -793,6 +849,7 @@ class App:
         sel = self.tree.selection()
         gone = set(self._files_of(sel))
         for iid in sel:  # markiertes Projekt: ganz entfernen, auch Dateien außerhalb des Bereichs
+            iid = iid[5:] if iid.startswith("hint:") else iid
             if iid.startswith("dir:"):
                 gone.update(self.groups.get(Path(iid[4:]), []))
         if not gone:
@@ -830,6 +887,12 @@ class App:
                 for f in self.scoped(p):
                     tree.insert(gid, "end", iid=str(f), text=str(f.relative_to(p)))
                     self._refresh_row(f)
+                if self.groups[p] and not self.scoped(p):
+                    cur = SCOPES[self.var_scope.get()].title
+                    best, n = best_scope(self.groups[p], p, self.var_scope.get())
+                    tree.insert(gid, "end", iid="hint:" + gid, tags=("hint",),
+                                text=f"⚠  Im Bereich „{cur}“ liegt keine Datei",
+                                values=(f"{n}× „{SCOPES[best].title}“", "→ oben über „Bereich ▾“ ändern"))
                 self._refresh_group(p)
             else:
                 tree.insert("", "end", iid=str(p), text=p.name)
@@ -884,15 +947,26 @@ class App:
         tags = ("group", f"s{int(worst)}") if len(done) == len(files) else ("group",)
         self.tree.item(gid, values=(f"{STATUS_GLYPH[worst]}  {worst.label}", info), tags=tags)
 
+    def _empty_text(self, folder: Path) -> str:
+        """Text für ein Projekt, das im gewählten Bereich keine Dateien hat."""
+        cur = self.var_scope.get()
+        total = len(self.groups.get(folder, []))
+        best, n = best_scope(self.groups.get(folder, []), folder, cur)
+        return (f"⚠  Keine Datei im Bereich „{SCOPES[cur].title}“ – {total} EPS gefunden, davon {n} im "
+                f"Bereich „{SCOPES[best].title}“. Bereich oben über „Bereich ▾“ ändern.")
+
     def _on_select(self):
         sel = self.tree.selection()
         self.selected = sel[0] if sel else None
+        if self.selected and self.selected.startswith("hint:"):  # Hinweiszeile → Projekt
+            self.selected = self.selected[5:]
         self.show_checklist()
 
     def open_in_explorer(self):
         if not self.selected:
             return
-        path = self.selected[4:] if self.selected.startswith("dir:") else self.selected
+        sel = self.selected[5:] if self.selected.startswith("hint:") else self.selected
+        path = sel[4:] if sel.startswith("dir:") else sel
         try:
             if sys.platform == "win32":
                 if os.path.isdir(path):
@@ -914,7 +988,7 @@ class App:
         self.cl_canvas.yview_moveto(0)
 
     def _wrap(self, lbl: tk.Label) -> tk.Label:
-        lbl.configure(wraplength=self._wrap_width or max(200, self.cl_canvas.winfo_width() - 110),
+        lbl.configure(wraplength=self._wrap_width or max(px(200), self.cl_canvas.winfo_width() - px(110)),
                       justify="left")
         self.wrap_labels.append(lbl)
         return lbl
@@ -1037,6 +1111,8 @@ class App:
                    f"{sum(1 for r in done if r.status == Status.WARN)} Warnung · "
                    f"{sum(1 for r in done if r.status == Status.FAIL)} Fehler") if done else "Noch nicht geprüft"
         sc = SCOPES[self.var_scope.get()]
+        if not files and self.groups.get(folder):
+            summary = self._empty_text(folder)[3:]
         self._header(f"Projekt {folder.name}",
                      f"{folder}  ·  Bereich {sc.title}: {len(files)} von {len(self.groups.get(folder, []))} "
                      f"EPS-Datei(en)", worst, summary)

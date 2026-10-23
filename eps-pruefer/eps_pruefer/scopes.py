@@ -77,3 +77,13 @@ def empty_scope_hint(files: list[Path], root: Path, scope: Scope | str) -> str:
     found = ", ".join(folders[:6]) + (" …" if len(folders) > 6 else "") if folders else "keine Unterordner"
     return (f"0 von {len(files)} EPS im Bereich {scope.title} – gesucht wird ein Ordner {wanted} "
             f"(gefunden: {found})")
+
+
+def best_scope(files: list[Path], root: Path, current: str) -> tuple[str, int]:
+    """Bereich (außer dem aktuellen), in dem die meisten Dateien liegen; sonst „Komplett“."""
+    counts = {key: len(filter_scope(files, root, key))
+              for key in SCOPES if key not in (current, DEFAULT_SCOPE)}
+    key = max(counts, key=counts.get) if counts else DEFAULT_SCOPE
+    if not counts or counts[key] == 0:
+        return DEFAULT_SCOPE, len(files)
+    return key, counts[key]
