@@ -1,5 +1,10 @@
 # EPS-Prüfer – Druckproduktion & Anzeigensatz
 
+> **Entwicklungsstand v3** (Branch `claude/eps-pruefer-v3`): In Arbeit ist der
+> Auftragsabgleich (Auftragsbegleitscheine und Skizze gegen den Anzeigensatz).
+> Der stabile Stand **2.2.6** liegt unverändert im Branch `claude/eps-pruefer-v2.2.6`
+> und im Branch `claude/eps-validierung-druck-iuo8wi` (Tag `v2.2.6`).
+
 Desktop-Programm für Windows, das EPS-Dateien vor der Druckproduktion bzw. dem
 Anzeigensatz prüft. Die Dateien werden wirklich ausgeführt (mit Ghostscript) und
 jeder Malvorgang wird protokolliert. Das Programm liest also nicht nur die Kommentare
