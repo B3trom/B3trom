@@ -88,9 +88,14 @@ SAMPLES: dict[str, tuple[str, str]] = {
         EMBEDDED_FONT + BACKGROUND_CMYK + "0.5 setgray " + "1 1 1 1 rectfill " * 5000
         + "\n0 0 0 setrgbcolor " + TEXT_EMBEDDED,
     ),
-    # RGB-Schwarz beim Export nach CMYK umgerechnet (Illustrator-Standard)
+    # RGB-Schwarz beim Export nach CMYK umgerechnet: krumme Werte mit Kommastellen
     "schwarz_umgerechnet.eps": (
+        "", EMBEDDED_FONT + BACKGROUND_CMYK + "0.7465 0.6787 0.6702 0.9014 setcmykcolor " + TEXT_EMBEDDED),
+    # gleiche Größenordnung, aber ganzzahlig – wirkt absichtlich angelegt, kein Befund
+    "schwarz_ganzzahlig.eps": (
         "", EMBEDDED_FONT + BACKGROUND_CMYK + "0.75 0.68 0.67 0.9 setcmykcolor " + TEXT_EMBEDDED),
+    # reines K mit Kommastelle (K 87,3 %)
+    "schwarz_k_komma.eps": ("", BACKGROUND_CMYK + "0 0 0 0.873 setcmykcolor 10 10 80 80 rectfill\n"),
     # umgerechnetes RGB-Schwarz mit K 100 % und ~350 % Farbauftrag (wie in einer echten Anzeige)
     "schwarz_umgerechnet_k100.eps": ("", BACKGROUND_CMYK + "0.855 0.848 0.785 1 setcmykcolor 10 10 80 80 rectfill\n"),
     # bewusst angelegtes Tiefschwarz (K 100 %) – kein Befund

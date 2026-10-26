@@ -54,14 +54,17 @@ class PruefungTest(unittest.TestCase):
         self.assertEqual(self.status("rgb_schwarz_spaet.eps", "schwarz"), Status.FAIL)
 
     def test_umgerechnetes_rgb_schwarz(self):
-        self.assertEqual(self.status("schwarz_umgerechnet.eps", "schwarz"), Status.FAIL)
-        strict = check_file(self.dir / "schwarz_umgerechnet.eps", Settings(gs_executable=GS, rgb_is_error=True))
-        self.assertEqual(strict.check("schwarz").status, Status.FAIL)
-        self.assertIn("Mischschwarz", strict.check("schwarz").message)
-        self.assertEqual(self.status("tiefschwarz.eps", "schwarz"), Status.OK)
-        k100 = check_file(self.dir / "schwarz_umgerechnet_k100.eps", Settings(gs_executable=GS, rgb_is_error=True))
+        # krumme Werte mit Kommastellen deuten auf RGB-Umwandlung hin -> Fehler
+        r = self.result("schwarz_umgerechnet.eps")
+        self.assertEqual(r.check("schwarz").status, Status.FAIL)
+        self.assertIn("Kommastellen", r.check("schwarz").message)
+        k100 = self.result("schwarz_umgerechnet_k100.eps")
         self.assertEqual(k100.check("schwarz").status, Status.FAIL)
-        self.assertIn("Farbauftrag 349 %", " ".join(k100.check("schwarz").details))
+        self.assertIn("C85,5 M84,8 Y78,5 K100", " ".join(k100.check("schwarz").details))
+        self.assertEqual(self.status("schwarz_k_komma.eps", "schwarz"), Status.FAIL)
+        # ganzzahlige Werte wirken absichtlich angelegt -> kein Befund
+        self.assertEqual(self.status("schwarz_ganzzahlig.eps", "schwarz"), Status.OK)
+        self.assertEqual(self.status("tiefschwarz.eps", "schwarz"), Status.OK)
 
     def test_rgb_ursprungsdokument(self):
         r = self.result("ai_rgb_dokument.eps")

@@ -141,22 +141,28 @@ def _is_black(model: str, color: list[float]) -> bool:
 # Einzelprüfungen
 # ---------------------------------------------------------------------------
 
-# Ab diesem Gesamtfarbauftrag gilt 4c-Schwarz auch mit K 100 % als umgerechnetes RGB-Schwarz
-CONVERTED_BLACK_INK = 3.0
+def _has_decimals(color: list[float]) -> bool:
+    """Farbwert mit Nachkommastellen (z. B. 85,5 %)? Von Hand angelegte Werte sind ganzzahlig,
+    krumme Werte entstehen bei der Farbumrechnung (z. B. RGB → CMYK)."""
+    return any(abs(v * 100 - round(v * 100)) > 0.1 for v in color)
 
 
 def _is_converted_black(model: str, color: list[float]) -> bool:
-    """4c-Mischschwarz, wie es beim Umrechnen von RGB-Schwarz entsteht.
+    """Schwarzwert (K ab 60 %) mit Nachkommastellen – deutet auf RGB-Umwandlung hin.
 
-    Typisch: C75 M68 Y67 K90 oder C86 M85 Y79 K100 (Farbauftrag ~350 %). Bewusst
-    angelegtes Tiefschwarz (z. B. C60 M50 Y50 K100, 260 %) wird nicht gemeldet.
+    Beispiel: C85,5 M84,8 Y78,5 K100. Ganzzahlige Werte wie C60 M50 Y50 K100 wirken
+    absichtlich angelegt und werden nicht gemeldet.
     """
-    if model != "cmyk" or len(color) != 4:
+    if model != "cmyk" or len(color) != 4 or color[3] < 0.6:
         return False
-    c, m, y, k = color
-    if min(c, m, y) < 0.5 or k < 0.6:
-        return False
-    return k < 0.97 or c + m + y + k >= CONVERTED_BLACK_INK - 0.005
+    return _has_decimals(color)
+
+
+def _fmt_exact(color: list[float]) -> str:
+    """CMYK mit Nachkommastellen anzeigen (85,5 statt 86)."""
+    def pct(v: float) -> str:
+        return f"{v * 100:.1f}".rstrip("0").rstrip(".").replace(".", ",")
+    return "CMYK " + " ".join(f"{n}{pct(v)}" for n, v in zip("CMYK", color))
 
 
 def check_black(an: Analysis, s: Settings, info: EPSInfo | None = None) -> CheckResult:
@@ -171,7 +177,7 @@ def check_black(an: Analysis, s: Settings, info: EPSInfo | None = None) -> Check
             continue  # Glyphen-Zwischenspeicher einer Schrift: keine echte Farbe
         where = f"{ev.op}: {_fmt_color(ev)}{_fmt_box(ev)}"
         if _is_converted_black(model, ev.color):
-            converted.append(f"{where} – Farbauftrag {round(sum(ev.color) * 100)} %")
+            converted.append(f"{ev.op}: {_fmt_exact(ev.color)}{_fmt_box(ev)}")
         elif _is_black(model, ev.color):
             (rgb_black if model == "rgb" else gray_black).append(where)
         elif model == "rgb":
@@ -201,11 +207,11 @@ def check_black(an: Analysis, s: Settings, info: EPSInfo | None = None) -> Check
         # RGB-Ursprung: Schwarz wurde beim EPS-Export nach CMYK umgerechnet
         status = Status.FAIL
         parts.insert(0, f"{rgb_doc} – Farben beim EPS-Export nach CMYK umgerechnet")
-        details.insert(0, f"Dateikopf: {rgb_doc}. Illustrator rechnet RGB-Schwarz dabei in 4c-Mischschwarz um.")
+        details.insert(0, f"Dateikopf: {rgb_doc}. Illustrator rechnet RGB-Schwarz dabei in krumme CMYK-Werte um.")
     if converted:
         status = Status.FAIL  # umgerechnetes RGB-Schwarz ist ein Fehler, keine Geschmacksfrage
-        parts.append(f"{len(converted)}× umgerechnetes RGB-Schwarz (4c-Mischschwarz statt reinem K)")
-        details += ["Mischschwarz statt reinem K – " + d for d in converted[:MAX_DETAILS]]
+        parts.append(f"{len(converted)}× Schwarzwert mit Kommastellen (deutet auf RGB-Umwandlung hin)")
+        details += ["Schwarzwert mit Kommastellen – " + d for d in converted[:MAX_DETAILS]]
 
     message = ", ".join(parts) if parts else "Keine RGB- oder Graustufen-Schwarzwerte gefunden"
     return CheckResult("schwarz", CHECK_TITLES["schwarz"], status, message, details)

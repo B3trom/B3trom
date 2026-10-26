@@ -129,11 +129,14 @@ setglobal
 % Soll eine Vektor-Malung ausgegeben werden? (Obergrenze gegen riesige Logs)
 % Farbe fuer die Pruefung interessant? Normales CMYK, helle Graustufen und Sonderfarben
 % nicht - sonst fuellen sie bei grossen Dateien das Protokoll, bevor RGB-Schwarz kommt.
-% CMYK nur als moeglicher Mischschwarz-Wert (C, M, Y >= 50 %, K >= 60 %).
+% CMYK nur als Schwarzwert (K >= 60 %), reines 0/0/0/100 nicht.
 /@colorwanted { % -> bool
   currentcolorspace 0 get
   dup /DeviceCMYK eq {
-    pop currentcmykcolor 0.6 ge 4 1 roll 0.5 ge 4 1 roll 0.5 ge 4 1 roll 0.5 ge and and and
+    pop currentcmykcolor
+    //@T begin /kk exch def /yy exch def /mm exch def /cc exch def
+      kk 0.6 ge  cc 0 gt mm 0 gt or yy 0 gt or kk 1 lt or  and
+    end
   } {
   dup /DeviceGray eq { pop currentgray 0.2 le } {
     dup /Separation eq exch /DeviceN eq or not
